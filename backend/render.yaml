@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: ecostream-dispatch-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 8780
+      - key: ALLOWED_ORIGINS
+        value: "https://ecostream-dispatch.vercel.app,http://localhost:5173,http://localhost:3000"
+    healthCheckPath: /api/health
