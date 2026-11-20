@@ -26,6 +26,21 @@ npm run dev
 ```
 Open http://localhost:5173.
 
+## Run everything locally
+After `docs/SUPABASE_SETUP.md` and the one-time setup in `api/README.md` and `simulator/README.md`, use three terminals:
+```bash
+cd api && source .venv/bin/activate && uvicorn index:app --reload --port 8000
+```
+```bash
+cd frontend && npm run dev
+```
+```bash
+python3 simulator/simulate.py
+```
+Open http://localhost:5173 and log in. Without Supabase keys the frontend runs in **demo mode** on made-up data.
+
+Current results against the acceptance criteria: [`docs/STATUS.md`](docs/STATUS.md).
+
 ## Secrets
 Copy `.env.example` to `.env` (repo root) and fill it in. `.env` is gitignored. Never commit real keys.
 Supabase setup: [`docs/SUPABASE_SETUP.md`](docs/SUPABASE_SETUP.md).

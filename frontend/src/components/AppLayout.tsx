@@ -1,7 +1,9 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { BellRing, Truck } from 'lucide-react'
+import { BellRing, LogOut, Truck } from 'lucide-react'
 import Wordmark from './Wordmark'
 import { USING_MOCK_DATA } from '../services/api'
+import { LiveProvider, useLiveStatus } from '../services/live'
+import { useAuth } from '../auth/AuthProvider'
 
 /*
  * Shell for the owner pages (Fleet, Truck, Alerts).
@@ -15,6 +17,31 @@ const NAV = [
 
 export default function AppLayout() {
   return (
+    <LiveProvider>
+      <Shell />
+    </LiveProvider>
+  )
+}
+
+/** Green dot = live updates connected. Not shown in demo mode. */
+function LiveDot() {
+  const status = useLiveStatus()
+  if (status === 'off') return null
+  const live = status === 'live'
+  return (
+    <span
+      className="inline-flex items-center gap-1 text-xs font-semibold text-navy-700"
+      title={live ? 'Updates appear automatically' : 'Live updates not connected - data may be old'}
+    >
+      <span className={`h-2 w-2 rounded-full ${live ? 'animate-pulse bg-green-500' : 'bg-gray-400'}`} aria-hidden />
+      {live ? 'Live' : status === 'error' ? 'Not live' : 'Connecting'}
+    </span>
+  )
+}
+
+function Shell() {
+  const { session, signOut } = useAuth()
+  return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       <header className="sticky top-0 z-20 border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2">
@@ -22,7 +49,8 @@ export default function AppLayout() {
             <img src="/logo-mark.png" alt="" className="h-9 w-9 object-contain" />
             <Wordmark className="text-base" />
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <LiveDot />
             {USING_MOCK_DATA && (
               <span
                 className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-warning/40"
@@ -46,6 +74,16 @@ export default function AppLayout() {
                 </NavLink>
               ))}
             </nav>
+            {session && (
+              <button
+                onClick={signOut}
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-semibold text-navy-700 hover:bg-gray-100"
+                title={`Logged in as ${session.user.email ?? ''}`}
+              >
+                <LogOut size={18} aria-hidden />
+                <span className="hidden sm:inline">Log out</span>
+              </button>
+            )}
           </div>
         </div>
       </header>

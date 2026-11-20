@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { ArrowLeft, Clock, Thermometer } from 'lucide-react'
 import { getReadings, getTruck } from '../services/api'
 import { useApi } from '../hooks/useApi'
+import { useLiveEvents, useThrottled } from '../services/live'
 import StatusBadge from '../components/StatusBadge'
 import Pressure from '../components/Pressure'
 import TyreLayout from '../components/TyreLayout'
@@ -26,6 +27,24 @@ export default function TruckPage() {
   const readingsQ = useApi(() => getReadings(id, new Date(Date.now() - TWO_HOURS_MS)), [id])
   const truck = truckQ.data
 
+  // Live: add new readings for this truck to the chart, refresh the tyre values.
+  const refreshTruck = useThrottled(truckQ.reload)
+  useLiveEvents({
+    onReading: (r) => {
+      if (!truck?.tyres.some((t) => t.id === r.tyre_id)) return
+      const cutoff = Date.now() - TWO_HOURS_MS
+      readingsQ.setData((prev) =>
+        prev && !prev.some((x) => x.id === r.id)
+          ? [...prev.filter((x) => new Date(x.ts).getTime() >= cutoff), r]
+          : prev,
+      )
+      refreshTruck()
+    },
+    onAlert: (a) => {
+      if (a.truck_id === id) refreshTruck()
+    },
+  })
+
   // Selected tyre: start with the worst one, so problems are visible straight away.
   const [selectedId, setSelectedId] = useState<string | null>(null)
   useEffect(() => {
@@ -34,7 +53,10 @@ export default function TruckPage() {
 
   const selected = truck?.tyres.find((t) => t.id === selectedId) ?? null
   const selectedReadings = useMemo(
-    () => (readingsQ.data ?? []).filter((r) => r.tyre_id === selectedId).sort((a, b) => a.ts.localeCompare(b.ts)),
+    () => (readingsQ.data ?? [])
+        .filter((r) => r.tyre_id === selectedId)
+        // Compare as dates: the API and Realtime may format times differently.
+        .sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime()),
     [readingsQ.data, selectedId],
   )
 

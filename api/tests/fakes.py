@@ -67,3 +67,71 @@ class FakeStore:
         for d in self.devices:
             if d["id"] == device_id:
                 d["last_seen_at"] = ts.isoformat()
+
+    def acknowledge_alert(self, alert_id, ts):
+        for a in self.alerts:
+            if a["id"] == alert_id:
+                a["acknowledged_at"] = a["acknowledged_at"] or ts.isoformat()
+                return a
+        return None
+
+
+# ---------------------------------------------------------------------------
+# Owner side: what OwnerRepo returns, for ONE owner who owns everything in the store.
+# (Row-level security itself is tested in supabase/tests, not here.)
+# ---------------------------------------------------------------------------
+
+OWNER_ID = "00000000-0000-4000-8000-000000000001"
+
+GARAGES = [
+    {"id": "g1", "name": "Sample Tyre Works 5", "lat": 12.92, "lon": 79.14, "phone": "+91 90000 00005",
+     "open_24x7": True, "opens": None, "closes": None, "services": ["tyre"], "verified": True},
+    {"id": "g2", "name": "Sample Tyre Works 8", "lat": 12.52, "lon": 78.22, "phone": "+91 90000 00008",
+     "open_24x7": True, "opens": None, "closes": None, "services": ["tyre"], "verified": True},
+    {"id": "g3", "name": "Sample Tyre Works 1", "lat": 13.0475, "lon": 80.096, "phone": "+91 90000 00001",
+     "open_24x7": True, "opens": None, "closes": None, "services": ["tyre"], "verified": True},
+    {"id": "g4", "name": "Sample Tyre Works 11", "lat": 11.67, "lon": 78.14, "phone": "+91 90000 00011",
+     "open_24x7": True, "opens": None, "closes": None, "services": ["tyre"], "verified": True},
+]
+
+
+class FakeOwnerRepo:
+    def __init__(self, store: FakeStore, trucks: list[dict] | None = None):
+        self.store = store
+        self._trucks = trucks or [
+            {"id": TRUCK_ID, "owner_id": OWNER_ID, "reg_no": "TN 99 ZZ 0001", "make": "Tata",
+             "model": "Signa 4825.T", "axle_config": "6W", "created_at": "2026-11-20T00:00:00+00:00"}
+        ]
+
+    def trucks(self):
+        return list(self._trucks)
+
+    def truck(self, truck_id):
+        return next((t for t in self._trucks if t["id"] == truck_id), None)
+
+    def tyres(self, truck_ids):
+        return [t for t in self.store.tyres if t["truck_id"] in truck_ids]
+
+    def latest_readings(self, truck_ids):
+        tyre_ids = [t["id"] for t in self.tyres(truck_ids)]
+        rows = self.store.latest_readings(tyre_ids)
+        truck_of = {t["id"]: t["truck_id"] for t in self.store.tyres}
+        return [{**r, "truck_id": truck_of[r["tyre_id"]]} for r in rows]
+
+    def readings(self, tyre_ids, start, end):
+        rows = [r for r in self.store.readings if r["tyre_id"] in tyre_ids and start <= parse_ts(r["ts"]) <= end]
+        return [{"id": i + 1, **r} for i, r in enumerate(sorted(rows, key=lambda r: parse_ts(r["ts"])))]
+
+    def alerts(self, open_only):
+        rows = self.store.alerts
+        if open_only is True:
+            rows = [a for a in rows if not a["acknowledged_at"]]
+        elif open_only is False:
+            rows = [a for a in rows if a["acknowledged_at"]]
+        return sorted(rows, key=lambda a: a["created_at"], reverse=True)
+
+    def alert(self, alert_id):
+        return next((a for a in self.store.alerts if a["id"] == alert_id), None)
+
+    def garages(self):
+        return list(GARAGES)

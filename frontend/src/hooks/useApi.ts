@@ -13,7 +13,6 @@ export function useApi<T>(load: () => Promise<T>, deps: unknown[]) {
   const [loading, setLoading] = useState(true)
   const [version, setVersion] = useState(0)
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const stableLoad = useCallback(load, deps)
 
   useEffect(() => {
@@ -37,6 +36,8 @@ export function useApi<T>(load: () => Promise<T>, deps: unknown[]) {
     }
   }, [stableLoad, version])
 
+  // reload() fetches again in the background; the old data stays on screen meanwhile.
   const reload = useCallback(() => setVersion((v) => v + 1), [])
-  return { data, error, loading, reload }
+  // setData lets live updates change the data directly (e.g. append a new reading).
+  return { data, error, loading, reload, setData }
 }

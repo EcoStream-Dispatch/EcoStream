@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import AppLayout from './components/AppLayout'
+import RequireAuth from './auth/RequireAuth'
 import FleetPage from './pages/FleetPage'
 import AlertsPage from './pages/AlertsPage'
 import { Loading } from './components/PageState'
@@ -13,15 +14,21 @@ const TruckPage = lazy(() => import('./pages/TruckPage'))
 
 /**
  * All routes live here.
- * Public: landing + login. Owner pages sit inside AppLayout (top bar + tab bar).
- * Stage 6 will protect the owner pages behind Supabase login.
+ * Public: landing + login. Owner pages need a login (RequireAuth; skipped in demo mode)
+ * and sit inside AppLayout (top bar, tab bar, live connection).
  */
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route element={<AppLayout />}>
+      <Route
+        element={
+          <RequireAuth>
+            <AppLayout />
+          </RequireAuth>
+        }
+      >
         <Route path="/fleet" element={<FleetPage />} />
         <Route
           path="/trucks/:id"

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { CheckCheck } from 'lucide-react'
 import { ackAlert, getAlerts, getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
+import { useLiveEvents, useThrottled } from '../services/live'
 import StatusBadge from '../components/StatusBadge'
 import GarageList from '../components/GarageList'
 import { ErrorBox, Loading } from '../components/PageState'
@@ -22,6 +23,13 @@ export default function AlertsPage() {
   const alertsQ = useApi(() => getAlerts(filter === 'open'), [filter])
   // Trucks give us the reg no, tyre position and location for each alert.
   const trucksQ = useApi(getTrucks, [])
+
+  // Live: a new or changed alert -> refresh the list (and truck positions for garages).
+  const refresh = useThrottled(() => {
+    alertsQ.reload()
+    trucksQ.reload()
+  }, 1000)
+  useLiveEvents({ onAlert: refresh })
 
   const trucksById = new Map((trucksQ.data ?? []).map((t) => [t.id, t]))
 

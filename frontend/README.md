@@ -12,18 +12,21 @@ npm run build    # type-check + production build
 | URL | File | What |
 |---|---|---|
 | `/` | `pages/LandingPage.tsx` | Public landing page |
-| `/login` | `pages/LoginPage.tsx` | Placeholder until Stage 6 (Supabase login) |
+| `/login` | `pages/LoginPage.tsx` | Owner login (Supabase email + password) |
 | `/fleet` | `pages/FleetPage.tsx` | One card per truck |
 | `/trucks/:id` | `pages/TruckPage.tsx` | Tyre layout, per-tyre values, 2-hour chart |
 | `/alerts` | `pages/AlertsPage.tsx` | Open/closed alerts, acknowledge, 3 nearest garages |
 
 ## Where data comes from
 ```
-page  ->  services/api.ts  ->  data/mock.ts   (now)
-page  ->  services/api.ts  ->  FastAPI /api   (Stage 6)
+page  ->  services/api.ts  ->  FastAPI /api  (with the owner's login token)   when Supabase keys are set
+page  ->  services/api.ts  ->  data/mock.ts  ("Demo data", no login)          when they're not
 ```
 - **Pages never import `data/mock.ts`.** They only call `services/api.ts`.
-- Switching to the real backend = changing `services/api.ts` only.
+- In `npm run dev`, `/api/*` is proxied to `http://localhost:8000` (see `vite.config.ts`).
+- **Login:** `auth/AuthProvider.tsx` (Supabase email + password), `auth/RequireAuth.tsx` guards owner pages.
+- **Live updates:** `services/live.tsx` opens one Supabase Realtime connection for new `readings`
+  and changed `alerts`. Pages use `useLiveEvents(...)`. The top bar shows Live / Not live.
 - `types.ts` mirrors the database tables and API responses (spec sections 3 and 5).
 
 ## Units

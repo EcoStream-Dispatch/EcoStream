@@ -192,12 +192,13 @@ def list_alerts(
 def acknowledge_alert(
     alert_id: UUID,
     repo: Annotated[db.OwnerRepo, Depends(get_owner_repo)],
+    store=Depends(get_ingest_store),
 ):
     # Row-level security: if the owner can't see it, it isn't theirs.
     if not repo.alert(str(alert_id)):
         raise HTTPException(404, "Alert not found")
-    # Owners can't write to the alerts table directly, so the API does it.
-    return db.IngestRepo().acknowledge_alert(str(alert_id), utc_now())
+    # Owners can't write to the alerts table directly, so the API does it (service role).
+    return store.acknowledge_alert(str(alert_id), utc_now())
 
 
 @app.get("/api/garages/nearest")

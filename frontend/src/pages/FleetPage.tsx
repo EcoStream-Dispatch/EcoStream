@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { BellRing, ChevronRight, Clock } from 'lucide-react'
 import { getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
+import { useLiveEvents, useThrottled } from '../services/live'
 import StatusBadge from '../components/StatusBadge'
 import { ErrorBox, Loading } from '../components/PageState'
 import { STATUS_STYLE } from '../lib/status'
@@ -11,13 +12,16 @@ import type { TruckSummary, TyreStatus } from '../types'
 /** Fleet page (spec section 6.2): one card per truck - reg no, status, last seen. */
 export default function FleetPage() {
   const { data: trucks, loading, error, reload } = useApi(getTrucks, [])
+  // Live: new readings/alerts -> refresh the cards (at most every 3 s).
+  const refresh = useThrottled(reload)
+  useLiveEvents({ onReading: refresh, onAlert: refresh })
 
   return (
     <>
       <h1 className="text-2xl font-bold">My fleet</h1>
       {trucks && (
         <p className="mt-1 text-sm text-navy-700">
-          {trucks.length} trucks · {trucks.filter((t) => t.status !== 'ok').length} need attention
+          {trucks.length} truck{trucks.length === 1 ? '' : 's'} · {trucks.filter((t) => t.status !== 'ok').length} need attention
         </p>
       )}
 
