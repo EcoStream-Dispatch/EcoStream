@@ -55,6 +55,9 @@ Left menu → **Database** → **Publications** → `supabase_realtime`. `readin
 ## 7. Copy the keys into `.env`
 There is **one** `.env` file, at the root of the repo. It is gitignored, so it never gets committed.
 
+**Easiest:** from the repo root run `python3 scripts/set_supabase_env.py`. It asks for the URL and the two keys
+(hidden while you paste), checks you didn't swap them, and fills in all 5 Supabase lines. Or by hand:
+
 1. In the repo root, copy the example: `cp .env.example .env`
 2. In Supabase: **Project Settings** (gear icon) → **API** (newer dashboards: **API Keys** and **Data API**).
 3. Fill in `.env`:
