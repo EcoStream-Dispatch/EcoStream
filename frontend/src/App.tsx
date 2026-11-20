@@ -1,17 +1,39 @@
-import { Route, Routes } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
+import AppLayout from './components/AppLayout'
+import FleetPage from './pages/FleetPage'
+import AlertsPage from './pages/AlertsPage'
+import { Loading } from './components/PageState'
+
+// The Truck page pulls in the chart library (recharts), which is big.
+// Loading it only when needed keeps the first page load fast on phones.
+const TruckPage = lazy(() => import('./pages/TruckPage'))
 
 /**
  * All routes live here.
- * Stage 2 adds the owner pages (Fleet, Truck, Alerts).
+ * Public: landing + login. Owner pages sit inside AppLayout (top bar + tab bar).
+ * Stage 6 will protect the owner pages behind Supabase login.
  */
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route path="*" element={<LandingPage />} />
+      <Route element={<AppLayout />}>
+        <Route path="/fleet" element={<FleetPage />} />
+        <Route
+          path="/trucks/:id"
+          element={
+            <Suspense fallback={<Loading what="truck" />}>
+              <TruckPage />
+            </Suspense>
+          }
+        />
+        <Route path="/alerts" element={<AlertsPage />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
