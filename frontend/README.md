@@ -35,4 +35,6 @@ Helpers: `lib/units.ts`, `lib/format.ts`.
 - `lib/`: plain functions, no React (units, distance/opening hours, tyre positions, status colours)
 - `hooks/useApi.ts`: loading/error handling for service calls
 
+Environment variables live in the single `.env` at the repo root (see `vite.config.ts` `envDir`).
+
 Brand colours and fonts: see `../docs/BRAND.md`.

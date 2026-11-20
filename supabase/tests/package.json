@@ -1,0 +1,6 @@
+{
+  "name": "ecostream-db-tests",
+  "private": true,
+  "scripts": { "test": "node local_check.cjs" },
+  "devDependencies": { "@electric-sql/pglite": "0.2.17" }
+}

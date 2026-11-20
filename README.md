@@ -27,4 +27,5 @@ npm run dev
 Open http://localhost:5173.
 
 ## Secrets
-Copy `.env.example` to `.env` and fill it in. `.env` is gitignored. Never commit real keys.
+Copy `.env.example` to `.env` (repo root) and fill it in. `.env` is gitignored. Never commit real keys.
+Supabase setup: [`docs/SUPABASE_SETUP.md`](docs/SUPABASE_SETUP.md).
