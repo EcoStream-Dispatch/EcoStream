@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Brand tokens as CSS variables (same values as tailwind.config.js).
+ * See docs/BRAND.md. Use these in plain CSS or chart colours.
+ */
+:root {
+  --navy-900: #0b1e36;
+  --navy-700: #1d323a;
+  --green-700: #3e7231;
+  --green-500: #5c9a35;
+  --green-300: #8cc152;
+  --green-50: #f4f9f1;
+  --white: #ffffff;
+  --warning: #e0a100;
+  --critical: #c62828;
+
+  /* Tyre status colours */
+  --status-ok: var(--green-500);
+  --status-warning: var(--warning);
+  --status-critical: var(--critical);
+  --status-offline: #9ca3af;
+}
+
+body {
+  @apply bg-white font-sans text-navy-900 antialiased;
+}
+
+h1, h2, h3 {
+  @apply font-heading;
+}
