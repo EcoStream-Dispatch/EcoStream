@@ -1,0 +1,4 @@
+# Runtime dependencies for the API (Vercel installs these).
+fastapi>=0.115,<1
+supabase>=2.15,<3
+python-dotenv>=1.0,<2

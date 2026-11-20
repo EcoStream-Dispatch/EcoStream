@@ -231,17 +231,17 @@ def evaluate_offline(
     device_online = device_last_seen_at is not None and now - device_last_seen_at < limit
     if not device_online:
         return None
-    if tyre_last_reading_at is not None and now - tyre_last_reading_at < limit:
+    # A sensor that has NEVER reported has no "last reading" to measure 10 minutes from
+    # (TPMS sensors are heard one at a time, so a new device's first batches are partial).
+    # We don't alert on it here.
+    if tyre_last_reading_at is None or now - tyre_last_reading_at < limit:
         return None
 
-    if tyre_last_reading_at is None:
-        minutes, msg = 0.0, "This tyre sensor has never sent a reading. Check it is paired."
-    else:
-        minutes = (now - tyre_last_reading_at).total_seconds() / 60
-        msg = (
-            f"No reading from this tyre sensor for {minutes:.0f} minutes. "
-            "Sensor battery or signal may be the problem."
-        )
+    minutes = (now - tyre_last_reading_at).total_seconds() / 60
+    msg = (
+        f"No reading from this tyre sensor for {minutes:.0f} minutes. "
+        "Sensor battery or signal may be the problem."
+    )
     alert = NewAlert(tyre.id, tyre.truck_id, "sensor_offline", "warning", round(minutes, 1), msg)
     kept = remove_duplicates([alert], recent_alerts, now, config)
     return kept[0] if kept else None

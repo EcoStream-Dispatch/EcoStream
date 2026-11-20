@@ -80,6 +80,10 @@ begin
     names := array_append(names, 'A can see own readings (at least 1)'); exps := exps || 1::bigint; acts := acts || least(n, 1);
     select count(*) into n from public.alerts where id = a_alert;
     names := array_append(names, 'A can see own alert'); exps := exps || 1::bigint; acts := acts || n;
+    select count(*) into n from public.tyre_latest_reading where tyre_id = b_tyre;
+    names := array_append(names, 'A cannot see B''s latest reading (view)'); exps := exps || 0::bigint; acts := acts || n;
+    select count(*) into n from public.tyre_latest_reading where tyre_id = a_tyre;
+    names := array_append(names, 'A can see own latest reading (view)'); exps := exps || 1::bigint; acts := acts || n;
     select count(*) into n from public.devices;
     names := array_append(names, 'A cannot see devices (key hashes)'); exps := exps || 0::bigint; acts := acts || n;
     select count(*) into n from public.garages;

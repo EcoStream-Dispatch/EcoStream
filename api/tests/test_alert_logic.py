@@ -298,6 +298,12 @@ def test_not_offline_when_tyre_recent():
     assert evaluate_offline(TYRE, now - timedelta(minutes=5), now, [], now) is None
 
 
+def test_not_offline_when_sensor_never_reported():
+    # New install: sensors are heard one by one, so a missing first reading isn't a fault.
+    now = T0 + timedelta(minutes=30)
+    assert evaluate_offline(TYRE, None, now, [], now) is None
+
+
 def test_offline_is_deduplicated():
     now = T0 + timedelta(minutes=30)
     recent = [RecentAlert("sensor_offline", now - timedelta(minutes=5))]

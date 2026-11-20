@@ -5,6 +5,7 @@ About 15 minutes. You need: a browser, and a password manager for the passwords 
 Files you will paste from:
 - `supabase/migrations/20261120000001_init_schema.sql`: tables, indexes, row-level security, realtime
 - `supabase/migrations/20261120000002_readings_retention.sql`: deletes readings older than 30 days
+- `supabase/migrations/20261120000003_latest_reading_view.sql`: fast "latest reading per tyre" view
 - `supabase/seed.sql`: demo owner, 2 trucks × 6 tyres, 13 fake garages
 - `supabase/tests/rls_check.sql`: checks owners only see their own data
 
@@ -25,7 +26,8 @@ Files you will paste from:
    You should see *Success. No rows returned*.
 3. New query again. Paste all of `supabase/migrations/20261120000002_readings_retention.sql` → **Run**.
    - If it says *extension "pg_cron" is not available*: left menu → **Database** → **Extensions** → search `pg_cron` → enable it → run the file again.
-4. Check: left menu → **Table Editor**. You should see 7 tables: `alerts`, `devices`, `fleet_owners`, `garages`, `readings`, `trucks`, `tyres`.
+4. New query again. Paste all of `supabase/migrations/20261120000003_latest_reading_view.sql` → **Run**.
+5. Check: left menu → **Table Editor**. You should see 7 tables: `alerts`, `devices`, `fleet_owners`, `garages`, `readings`, `trucks`, `tyres`.
 
 ## 3. Create the demo owner login
 1. Left menu → **Authentication** → **Users** → **Add user** → **Create new user**.
@@ -43,7 +45,7 @@ Check in Table Editor: `trucks` has 2 rows, `tyres` 12, `garages` 13.
 
 ## 5. Check the security (acceptance criterion 5)
 SQL Editor → New query → paste all of `supabase/tests/rls_check.sql` → **Run**.
-You get a table of 16 checks. **Every row must say PASS.** It cleans up after itself.
+You get a table of 18 checks. **Every row must say PASS.** It cleans up after itself.
 If anything says FAIL, stop and tell Hari/Claude. Don't put real data in yet.
 
 ## 6. Check realtime is on
@@ -65,7 +67,8 @@ There is **one** `.env` file, at the root of the repo. It is gitignored, so it n
 | `VITE_SUPABASE_URL` | same as `SUPABASE_URL` |
 | `VITE_SUPABASE_ANON_KEY` | same as `SUPABASE_ANON_KEY` |
 | `DEVICE_KEY_SALT` | make a random one: run `openssl rand -hex 32` in a terminal and paste the output |
-| `VITE_API_BASE` | leave empty for now (Stage 5/6) |
+| `VITE_API_BASE` | leave empty for now (Stage 6) |
+| `SIM_API_URL`, `SIM_DEVICE_KEY_TRUCK1/2` | see `simulator/README.md` (the key script fills these in) |
 
 ### Key safety, please read
 - The **anon/publishable** key is meant to be public. It is safe in the frontend because row-level security limits what it can see.
