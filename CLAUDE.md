@@ -21,7 +21,8 @@ Other truck parameters (engine, fuel, CAN/J1939) come later as plug-ins. Do not 
 - All pressures stored in kPa gauge, temperatures in °C, times in UTC.
 - Keep it simple: no MQTT, no Kafka, no Pathway in Phase 1b.
 - Write tests for the alert logic (`/api/tests`) before wiring it to the UI.
-- The repo is PRIVATE until the provisional patent is filed. Do not add public links.
+- The GitHub repo is PUBLIC: anyone can read everything that is pushed. Never commit secrets,
+  real customer data or new patent-sensitive material (ask Adithya first).
 
 ## Owners
 - Frontend: Rishi

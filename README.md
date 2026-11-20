@@ -3,7 +3,7 @@
 Predictive maintenance for Indian trucks, starting with tyres.
 **PREDICT · PROTECT · PERFORM**
 
-Private repo. Read these first:
+Public repo: never commit secrets (`.env` is gitignored). Read these first:
 1. [`CLAUDE.md`](CLAUDE.md): repo rules
 2. [`docs/PROTOTYPE_SPEC.md`](docs/PROTOTYPE_SPEC.md): what we are building (source of truth)
 3. [`docs/BRAND.md`](docs/BRAND.md): colours, fonts, look
