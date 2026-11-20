@@ -39,6 +39,9 @@ python3 simulator/simulate.py
 ```
 Open http://localhost:5173 and log in. Without Supabase keys the frontend runs in **demo mode** on made-up data.
 
+**Online demo (demo data, no login):** https://ecostream-dispatch.github.io/EcoStream/,
+published automatically from `main` by `.github/workflows/pages.yml`.
+
 Current results against the acceptance criteria: [`docs/STATUS.md`](docs/STATUS.md).
 
 ## Secrets

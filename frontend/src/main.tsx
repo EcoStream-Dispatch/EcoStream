@@ -7,7 +7,8 @@ import './styles/index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    {/* basename: on GitHub Pages the app lives under /EcoStream/ (see vite.config.ts) */}
+    <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '') || '/'}>
       <AuthProvider>
         <App />
       </AuthProvider>

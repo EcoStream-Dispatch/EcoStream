@@ -4,6 +4,7 @@ import Wordmark from './Wordmark'
 import { USING_MOCK_DATA } from '../services/api'
 import { LiveProvider, useLiveStatus } from '../services/live'
 import { useAuth } from '../auth/AuthProvider'
+import { asset } from '../lib/asset'
 
 /*
  * Shell for the owner pages (Fleet, Truck, Alerts).
@@ -46,7 +47,7 @@ function Shell() {
       <header className="sticky top-0 z-20 border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2">
           <Link to="/fleet" className="flex items-center gap-2" aria-label="EcoStream fleet">
-            <img src="/logo-mark.png" alt="" className="h-9 w-9 object-contain" />
+            <img src={asset('logo-mark.png')} alt="" className="h-9 w-9 object-contain" />
             <Wordmark className="text-base" />
           </Link>
           <div className="flex items-center gap-3">

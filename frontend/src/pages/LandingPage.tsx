@@ -15,6 +15,7 @@ import {
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import Wordmark from '../components/Wordmark'
+import { asset } from '../lib/asset'
 
 /*
  * Public landing page.
@@ -74,7 +75,7 @@ export default function LandingPage() {
           </div>
           <div className="flex justify-center">
             <img
-              src="/logo-mark.png"
+              src={asset('logo-mark.png')}
               alt="EcoStream logo: a connected truck inside a green leaf-shaped E"
               className="w-56 sm:w-72 md:w-96"
             />

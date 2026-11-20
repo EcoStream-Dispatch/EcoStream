@@ -1,0 +1,71 @@
+# Publishes the frontend (landing page + dashboard on DEMO data) to GitHub Pages:
+#   https://ecostream-dispatch.github.io/EcoStream/
+#
+# Runs on every push to main that touches frontend/, or by hand (Actions tab -> Run workflow).
+# One-time setup on GitHub: Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
+#
+# No Supabase keys are given to this build, so the site always runs in demo mode
+# (made-up data, no login). The real app with login is deployed on Vercel (Stage 7).
+
+name: Deploy frontend to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deployment at a time; a newer push cancels an older one still waiting.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Build (site lives under /EcoStream/)
+        run: npm run build
+        env:
+          PAGES_BASE: /EcoStream/
+
+      # GitHub Pages shows 404.html for any unknown path. Making it a copy of the app
+      # means links like /EcoStream/fleet work when opened directly or refreshed.
+      - name: Make deep links work
+        run: cp dist/index.html dist/404.html
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

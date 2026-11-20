@@ -7,6 +7,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    // Where the site is served from. '/' locally and on Vercel.
+    // The GitHub Pages workflow sets PAGES_BASE=/EcoStream/ (site lives at <org>.github.io/EcoStream/).
+    base: env.PAGES_BASE || '/',
     // Read .env from the repo root, so there is ONE .env file for the whole project.
     // Only variables starting with VITE_ reach the browser, so the service-role key stays private.
     envDir: '..',

@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import Wordmark from './Wordmark'
+import { asset } from '../lib/asset'
 
 /** Top bar for public pages: logo + brand name on the left, Login on the right. */
 export default function Header() {
@@ -8,7 +9,7 @@ export default function Header() {
     <header className="sticky top-0 z-10 border-b border-gray-100 bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <Link to="/" className="flex items-center gap-2" aria-label="EcoStream home">
-          <img src="/logo-mark.png" alt="" className="h-10 w-10 object-contain" />
+          <img src={asset('logo-mark.png')} alt="" className="h-10 w-10 object-contain" />
           <Wordmark className="text-lg" />
         </Link>
         {!onLoginPage && (
