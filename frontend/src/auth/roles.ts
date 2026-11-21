@@ -8,7 +8,7 @@ export const ROLES: Role[] = ['owner', 'driver', 'shipper']
 
 /** Where each role lands after logging in. */
 export const PORTAL_HOME: Record<Role, string> = {
-  owner: '/fleet',
+  owner: '/owner/dashboard',
   driver: '/driver',
   shipper: '/shipper',
 }

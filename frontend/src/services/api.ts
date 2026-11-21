@@ -7,14 +7,38 @@
  *   Supabase keys set  -> real FastAPI backend, with the owner's login token
  *   no Supabase keys   -> demo mode: made-up data from src/data/mock.ts
  */
-import type { Alert, NearbyGarage, Reading, TruckSummary } from '../types'
+import type {
+  Alert,
+  Driver,
+  Garage,
+  MapLayers,
+  NearbyGarage,
+  Prediction,
+  Reading,
+  Shipment,
+  TruckDetails,
+  TruckSummary,
+} from '../types'
 import {
   mockAckAlert,
   mockGetAlerts,
+  mockGetGarages,
   mockGetNearestGarages,
   mockGetReadings,
   mockGetTrucks,
 } from '../data/mock'
+import {
+  DEFAULT_PROFILE,
+  DRIVERS,
+  MAP_LAYERS,
+  PREDICTIONS,
+  PROFILES,
+  SHIPMENTS,
+  sampleMaintenance,
+  sampleParams,
+  sampleTyreExtras,
+} from '../data/ownerMock'
+import { kpaToPsi } from '../lib/units'
 import { supabase, SUPABASE_CONFIGURED } from '../lib/supabase'
 
 /** True in demo mode. The UI shows a "Demo data" label when true. */
@@ -153,4 +177,196 @@ export async function submitGarageSignup(_form: GarageSignup): Promise<{ referen
 // Future: POST /api/contact
 export async function submitContact(_form: ContactMessage): Promise<{ reference: string }> {
   return mockSubmit('MSG')
+}
+
+/* ------------------------------------------------------------------
+ * Owner portal (stage W3).
+ * No backend yet for drivers, shipments, plans per truck, engine/brake/cargo
+ * values, predictions or maintenance: these ALWAYS come from src/data/ownerMock.ts
+ * (even with Supabase set up) and pages label them "Demo data".
+ * Sample data is matched to trucks by registration number.
+ * Future endpoints are written above each function.
+ * ------------------------------------------------------------------ */
+
+/** True while the owner-portal extras are sample data. */
+export const OWNER_EXTRAS_MOCKED = true
+
+/** Same threshold as api/alert_config.py critical_pressure_fraction. */
+const CRITICAL_FRACTION = 0.8
+
+const regToId = (trucks: TruckSummary[]) => new Map(trucks.map((t) => [t.reg_no, t.id]))
+
+// Future: GET /api/drivers
+export async function getDrivers(trucks: TruckSummary[]): Promise<Driver[]> {
+  const ids = regToId(trucks)
+  return delay(DRIVERS.map((d) => ({ ...d, truck_id: d.truck_id ? (ids.get(d.truck_id) ?? null) : null })))
+}
+
+// Future: GET /api/shipments
+export async function getShipments(trucks: TruckSummary[]): Promise<Shipment[]> {
+  const ids = regToId(trucks)
+  return delay(SHIPMENTS.map((s) => ({ ...s, truck_id: s.truck_id ? (ids.get(s.truck_id) ?? null) : null })))
+}
+
+// Future: GET /api/garages (the API only has /nearest today)
+export async function getAllGarages(): Promise<Garage[]> {
+  return delay(mockGetGarages())
+}
+
+// Future: GET /api/map-layers
+export async function getMapLayers(): Promise<MapLayers> {
+  return delay(MAP_LAYERS)
+}
+
+/**
+ * Tyre predictions worked out from the truck's open alerts and latest readings
+ * (real data when Supabase is on). Costs are sample estimates.
+ */
+export function tyrePredictions(truck: TruckSummary, openAlerts: Alert[]): Prediction[] {
+  const out: Prediction[] = []
+  for (const a of openAlerts.filter((x) => x.truck_id === truck.id)) {
+    const tyre = truck.tyres.find((t) => t.id === a.tyre_id)
+    const pos = tyre?.position ?? 'tyre'
+    const base = { id: `tp-${a.id}`, truck_id: truck.id, component: 'Tyres' as const, needs_garage: true }
+    if (a.type === 'slow_leak' && tyre?.latest) {
+      const limit = tyre.recommended_cold_kpa * CRITICAL_FRACTION
+      const hours = a.value < 0 ? (tyre.latest.corrected_kpa - limit) / -a.value : Infinity
+      const h = Math.max(0, Math.round(hours))
+      out.push({
+        ...base,
+        issue: `${pos} tyre leaking ${kpaToPsi(-a.value).toFixed(1)} psi/hour`,
+        risk: hours <= 6 ? 'high' : 'medium',
+        window: Number.isFinite(hours) ? (h <= 0 ? 'Unsafe now' : `Unsafe in ~${h} h`) : 'Watch',
+        confidence_pct: 85,
+        action: 'Get the puncture or valve fixed at the nearest open garage.',
+        cost_if_ignored: 45_000,
+        cost_now: 500,
+      })
+    } else if (a.type === 'critical_pressure' || a.type === 'low_pressure') {
+      const critical = a.type === 'critical_pressure'
+      out.push({
+        ...base,
+        issue: `${pos} tyre pressure ${critical ? 'dangerously ' : ''}low`,
+        risk: critical ? 'high' : 'medium',
+        window: critical ? 'Unsafe now' : 'Top up today',
+        confidence_pct: 95,
+        action: critical ? 'Stop safely and inspect the tyre. Do not drive far.' : 'Inflate to the recommended pressure and check for a leak.',
+        cost_if_ignored: critical ? 60_000 : 20_000,
+        cost_now: critical ? 1_500 : 200,
+      })
+    } else if (a.type === 'high_temp') {
+      out.push({
+        ...base,
+        issue: `${pos} tyre running hot, pressure normal`,
+        risk: 'medium',
+        window: 'Check today',
+        confidence_pct: 70,
+        action: 'Check the brake and wheel bearing on that wheel.',
+        cost_if_ignored: 40_000,
+        cost_now: 3_000,
+      })
+    } else if (a.type === 'sensor_offline') {
+      out.push({
+        ...base,
+        issue: `${pos} sensor not reporting`,
+        risk: 'low',
+        window: 'Check at next stop',
+        confidence_pct: 90,
+        action: 'Check the sensor battery or signal. The tyre itself may be fine.',
+        cost_if_ignored: 0,
+        cost_now: 0,
+        needs_garage: false,
+      })
+    }
+  }
+  return out
+}
+
+/** Engine and brake data come from the truck's CAN bus, which the Lite plan doesn't read. */
+const NEEDS_PRO: Prediction['component'][] = ['Engine', 'Brakes']
+
+/**
+ * Tyre predictions (from alerts) + other sample predictions, worst first.
+ * Only predictions the truck's plan has data for: no engine predictions on Lite.
+ */
+export function predictionsFor(truck: TruckSummary, openAlerts: Alert[]): Prediction[] {
+  const rank = { high: 0, medium: 1, low: 2 }
+  const plan = (PROFILES[truck.reg_no] ?? DEFAULT_PROFILE).plan
+  const other = (PREDICTIONS[truck.reg_no] ?? [])
+    .filter((p) => plan !== 'lite' || !NEEDS_PRO.includes(p.component))
+    .map((p, i) => ({ ...p, id: `p-${truck.id}-${i}`, truck_id: truck.id }))
+  return [...tyrePredictions(truck, openAlerts), ...other].sort((a, b) => rank[a.risk] - rank[b.risk])
+}
+
+// Future: GET /api/trucks/{id}/details
+export async function getTruckDetails(truck: TruckSummary, openAlerts: Alert[]): Promise<TruckDetails> {
+  const seed = PROFILES[truck.reg_no] ?? DEFAULT_PROFILE
+  const driverRow = DRIVERS.find((d) => d.id === seed.driver_id) ?? null
+  const shipmentRow = SHIPMENTS.find((s) => s.id === seed.shipment_id) ?? null
+  const m = sampleMaintenance(truck.reg_no)
+  return delay({
+    profile: { ...seed, truck_id: truck.id },
+    driver: driverRow ? { ...driverRow, truck_id: truck.id } : null,
+    shipment: shipmentRow ? { ...shipmentRow, truck_id: truck.id } : null,
+    params: sampleParams(truck.reg_no, { driverName: driverRow?.name ?? null, odometerKm: seed.odometer_km }),
+    tyres: sampleTyreExtras(truck.reg_no, truck.tyres.map((t) => t.position)),
+    predictions: predictionsFor(truck, openAlerts),
+    service_history: m.history,
+    upcoming: m.upcoming,
+    documents: m.documents,
+  })
+}
+
+/** Plan of each truck (for the Trucks list badge). Future: part of GET /api/trucks */
+export function planOf(truck: TruckSummary) {
+  return (PROFILES[truck.reg_no] ?? DEFAULT_PROFILE).plan
+}
+
+/** Plan, driver and shipment per truck, for lists. */
+export function truckExtrasFor(truck: TruckSummary) {
+  const seed = PROFILES[truck.reg_no] ?? DEFAULT_PROFILE
+  return {
+    plan: seed.plan,
+    driver: DRIVERS.find((d) => d.id === seed.driver_id) ?? null,
+    shipmentId: seed.shipment_id,
+    nextService: seed.next_service,
+  }
+}
+
+/** One line in "upcoming maintenance" on the dashboard. */
+export interface UpcomingItem {
+  truck: TruckSummary
+  date: string
+  title: string
+}
+
+// Future: GET /api/maintenance/upcoming?days=7
+export function upcomingMaintenance(trucks: TruckSummary[], days = 7): UpcomingItem[] {
+  const limit = new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
+  const items: UpcomingItem[] = []
+  for (const truck of trucks) {
+    const seed = PROFILES[truck.reg_no]
+    if (seed && seed.next_service.date <= limit) items.push({ truck, date: seed.next_service.date, title: `Service: ${seed.next_service.what}` })
+    for (const d of sampleMaintenance(truck.reg_no).documents) {
+      if (d.due <= limit) items.push({ truck, date: d.due, title: `${d.name} renewal` })
+    }
+  }
+  return items.sort((a, b) => a.date.localeCompare(b.date))
+}
+
+/**
+ * Dashboard money numbers (sample assumption, shown as an estimate):
+ * each problem the owner acted on before it became a breakdown counts as one
+ * breakdown avoided, worth AVOIDED_BREAKDOWN_RUPEES.
+ */
+export const AVOIDED_BREAKDOWN_RUPEES = 25_000
+
+export function breakdownsAvoidedThisMonth(allAlerts: Alert[], now = new Date()): number {
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
+  return allAlerts.filter(
+    (a) =>
+      a.acknowledged_at &&
+      new Date(a.created_at).getTime() >= monthStart &&
+      (a.severity === 'critical' || a.type === 'slow_leak'),
+  ).length
 }

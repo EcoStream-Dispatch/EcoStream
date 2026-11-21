@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { CheckCheck } from 'lucide-react'
 import { ackAlert, getAlerts, getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
@@ -35,6 +35,11 @@ export default function AlertsPage() {
 
   const trucksById = new Map((trucksQ.data ?? []).map((t) => [t.id, t]))
 
+  // ?truck=<id>: only this truck's alerts (from "Book garage" buttons).
+  const [params, setParams] = useSearchParams()
+  const onlyTruck = params.get('truck')
+  const shown = (alertsQ.data ?? []).filter((a) => !onlyTruck || a.truck_id === onlyTruck)
+
   return (
     <>
       <h1 className="text-2xl font-bold">{t('alerts.title')}</h1>
@@ -56,17 +61,26 @@ export default function AlertsPage() {
         ))}
       </div>
 
+      {onlyTruck && (
+        <p className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          Showing only <span className="font-semibold">{trucksById.get(onlyTruck)?.reg_no ?? 'one truck'}</span>
+          <button onClick={() => setParams({}, { replace: true })} className="font-semibold text-green-700 underline hover:text-green-500">
+            Show all trucks
+          </button>
+        </p>
+      )}
+
       <div className="mt-4">
         {(alertsQ.loading || trucksQ.loading) && !alertsQ.data && <Loading what="alerts" />}
         {alertsQ.error && <ErrorBox message={alertsQ.error} onRetry={alertsQ.reload} />}
-        {alertsQ.data && alertsQ.data.length === 0 && (
+        {alertsQ.data && shown.length === 0 && (
           <p className="rounded-xl bg-white p-6 text-center text-navy-700 ring-1 ring-gray-200">
             {filter === 'open' ? 'No open alerts. All good.' : 'No closed alerts yet.'}
           </p>
         )}
         {alertsQ.data && trucksQ.data && (
           <ul className="space-y-3">
-            {alertsQ.data.map((a) => (
+            {shown.map((a) => (
               <li key={a.id}>
                 <AlertCard alert={a} truck={trucksById.get(a.truck_id)} onAcked={alertsQ.reload} />
               </li>
@@ -108,7 +122,7 @@ function AlertCard({ alert, truck, onAcked }: { alert: Alert; truck?: TruckSumma
           <h2 className="text-lg font-bold">{ALERT_TITLE[alert.type]}</h2>
           <p className="text-sm text-navy-700">
             {truck ? (
-              <Link to={`/trucks/${truck.id}`} className="font-semibold text-green-700 hover:text-green-500">
+              <Link to={`/owner/trucks/${truck.id}`} className="font-semibold text-green-700 hover:text-green-500">
                 {truck.reg_no}
               </Link>
             ) : (

@@ -8,10 +8,19 @@
  * Units: pressures in kPa (gauge), temperatures in °C, times as ISO strings in UTC.
  */
 
+import type { AddOnId, PlanId } from './data/plans'
+
 // ---------- Simple enums ----------
 
-/** Wheel layout of a truck. 6W = 2 front + 4 rear (one dual axle). 10W = 2 front + 8 rear (two dual axles). */
-export type AxleConfig = '6W' | '10W'
+/**
+ * Wheel layout of a truck (see lib/tyreLayout.ts):
+ *   6W  = 2 front + 4 rear (one dual axle)
+ *   10W = 2 front + 8 rear (two dual axles)
+ *   12W = 2 + 2 front (twin steer) + 8 rear (two dual axles)
+ *   14W = 2 front + 12 rear (three dual axles)
+ *   18W = tractor (2 front + 8 rear) + trailer (8 on two dual axles)
+ */
+export type AxleConfig = '6W' | '10W' | '12W' | '14W' | '18W'
 
 export type AlertType =
   | 'low_pressure'
@@ -118,4 +127,140 @@ export interface NearbyGarage extends Garage {
   /** Straight-line (haversine) distance from the truck, in km */
   distance_km: number
   open_now: boolean
+}
+
+// ---------- Owner portal (website stage W3) ----------
+// No backend for these yet: they come from src/data/ownerMock.ts through src/services/api.ts.
+// Pages show a "Demo data" label wherever they use them.
+
+
+export type Availability = 'on_trip' | 'available' | 'off'
+
+export interface Driver {
+  id: string
+  name: string
+  phone: string
+  /** YYYY-MM-DD */
+  licence_expiry: string
+  /** 0-100, from driving data (harsh braking, speeding, idling) */
+  score: number
+  availability: Availability
+  truck_id: string | null
+}
+
+export interface Place {
+  name: string
+  city: string
+  address: string
+  contact: string
+  phone: string
+  lat: number
+  lon: number
+}
+
+export type ShipmentStatus = 'scheduled' | 'loading' | 'in_transit' | 'delivered' | 'delayed'
+
+export interface Shipment {
+  id: string
+  sender: Place
+  receiver: Place
+  goods: string
+  weight_t: number
+  truck_id: string | null
+  driver_id: string | null
+  status: ShipmentStatus
+  pickup_at: string
+  eta: string | null
+  distance_left_km: number | null
+}
+
+export interface TruckProfile {
+  truck_id: string
+  plan: PlanId
+  add_ons: AddOnId[]
+  driver_id: string | null
+  shipment_id: string | null
+  odometer_km: number
+  next_service: { date: string; km: number; what: string }
+}
+
+export type ParamStatus = 'ok' | 'warning' | 'critical'
+
+/** One live value on a Truck page card (keys from src/data/plans.ts). */
+export interface ParamValue {
+  key: string
+  value: string
+  detail?: string
+  status: ParamStatus
+  /** e.g. "80-95 °C" */
+  normal?: string
+  /** last 24 h, for the sparkline */
+  series?: number[]
+}
+
+export interface TyreExtra {
+  position: string
+  brand: string
+  tread_mm: number
+  sensor_battery_pct: number
+  signal: 'good' | 'weak'
+  fitted_on: string
+  km_run: number
+  retreads: number
+  cost_per_km: number
+}
+
+export type Risk = 'low' | 'medium' | 'high'
+
+export interface Prediction {
+  id: string
+  truck_id: string
+  component: 'Tyres' | 'Engine' | 'Brakes' | 'Power' | 'Cargo'
+  issue: string
+  risk: Risk
+  /** "Unsafe in ~6 h", "Service due in 9 days / 1,800 km" */
+  window: string
+  confidence_pct: number
+  action: string
+  cost_if_ignored: number
+  cost_now: number
+  /** Show "Book garage" */
+  needs_garage: boolean
+}
+
+export interface MaintenanceItem {
+  date: string
+  title: string
+  where: string
+  cost: number | null
+}
+
+export interface ComplianceDoc {
+  name: 'Permit' | 'Fitness certificate' | 'PUC' | 'Insurance' | 'Road tax'
+  due: string
+}
+
+/** Everything the Truck page needs on top of TruckSummary. */
+export interface TruckDetails {
+  profile: TruckProfile
+  driver: Driver | null
+  shipment: Shipment | null
+  params: ParamValue[]
+  tyres: TyreExtra[]
+  predictions: Prediction[]
+  service_history: MaintenanceItem[]
+  upcoming: MaintenanceItem[]
+  documents: ComplianceDoc[]
+}
+
+export interface MapPath {
+  name: string
+  points: [number, number][]
+}
+
+/** Extra map layers on the Live Map (sample data). */
+export interface MapLayers {
+  dead_zones: MapPath[]
+  ghats: MapPath[]
+  bad_roads: MapPath[]
 }

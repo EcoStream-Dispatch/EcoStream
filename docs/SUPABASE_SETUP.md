@@ -7,6 +7,7 @@ Files you will paste from:
 - `supabase/migrations/20261120000002_readings_retention.sql`: deletes readings older than 30 days
 - `supabase/migrations/20261120000003_latest_reading_view.sql`: fast "latest reading per tyre" view
 - `supabase/migrations/20261121000004_profiles_roles.sql`: login roles (owner / driver / shipper)
+- `supabase/migrations/20261121000005_more_axle_layouts.sql`: allows 12, 14 and 18-wheel trucks
 - `supabase/seed.sql`: demo owner, 2 trucks × 6 tyres, 13 fake garages
 - `supabase/tests/rls_check.sql`: checks owners only see their own data
 
@@ -29,7 +30,8 @@ Files you will paste from:
    - If it says *extension "pg_cron" is not available*: left menu → **Database** → **Extensions** → search `pg_cron` → enable it → run the file again.
 4. New query again. Paste all of `supabase/migrations/20261120000003_latest_reading_view.sql` → **Run**.
 5. New query again. Paste all of `supabase/migrations/20261121000004_profiles_roles.sql` → **Run**.
-6. Check: left menu → **Table Editor**. You should see 8 tables: `alerts`, `devices`, `fleet_owners`, `garages`, `profiles`, `readings`, `trucks`, `tyres`.
+6. New query again. Paste all of `supabase/migrations/20261121000005_more_axle_layouts.sql` → **Run**.
+7. Check: left menu → **Table Editor**. You should see 8 tables: `alerts`, `devices`, `fleet_owners`, `garages`, `profiles`, `readings`, `trucks`, `tyres`.
 
 ## 3. Create the demo owner login
 1. Left menu → **Authentication** → **Users** → **Add user** → **Create new user**.

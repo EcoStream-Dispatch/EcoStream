@@ -5,7 +5,7 @@ import { formatPsi } from '../lib/units'
 
 /*
  * Top view of the truck (front at the top) with each tyre coloured by status.
- * Tap/click a tyre to select it. Works for 6-wheel and 10-wheel layouts
+ * Tap/click a tyre to select it. Works for 6, 10, 12, 14 and 18-wheel layouts
  * (see lib/tyreLayout.ts for the positions).
  *
  * Everything is drawn in an SVG "viewBox" 200 units wide, so it scales to any screen.
@@ -13,9 +13,10 @@ import { formatPsi } from '../lib/units'
 
 const TYRE_W = 18
 const TYRE_H = 36
-const FRONT_Y = 62 // centre of the front axle
-const FIRST_REAR_Y = 150 // centre of the first rear axle
-const REAR_GAP = 54 // distance between rear axles
+const FRONT_Y = 62 // centre of the first front axle
+const AXLE_GAP = 58 // distance between axles of the same group (room for the labels)
+const GROUP_GAP = 88 // distance from the last axle of one group to the first of the next
+const BODY_TOP = 92 // where the cargo body starts
 
 // x (left edge) of each tyre slot. Singles use the inner slots.
 const LEFT_OUTER_X = 18
@@ -33,8 +34,17 @@ interface Props {
 export default function TyreLayout({ axleConfig, tyres, selectedId, onSelect }: Props) {
   const axles = AXLE_LAYOUTS[axleConfig]
   const byPosition = new Map(tyres.map((t) => [t.position, t]))
-  const axleY = (i: number) => (i === 0 ? FRONT_Y : FIRST_REAR_Y + (i - 1) * REAR_GAP)
-  const lastY = axleY(axles.length - 1)
+  // y of each axle: small gaps inside a group (front / rear / trailer), bigger gaps between groups.
+  const ys: number[] = []
+  axles.forEach((a, i) => {
+    if (i === 0) ys.push(FRONT_Y)
+    else ys.push(ys[i - 1] + (a.group === axles[i - 1].group ? AXLE_GAP : GROUP_GAP))
+  })
+  const axleY = (i: number) => ys[i]
+  const lastY = ys[ys.length - 1]
+  // Tractor-trailer: where the trailer starts (between the last rear axle and the first trailer axle).
+  const trailerIdx = axles.findIndex((a) => a.group === 'trailer')
+  const hitchY = trailerIdx > 0 ? (ys[trailerIdx - 1] + ys[trailerIdx]) / 2 : null
   const height = lastY + TYRE_H / 2 + 22
 
   /** Draw one tyre at (x, centreY). */
@@ -112,8 +122,19 @@ export default function TyreLayout({ axleConfig, tyres, selectedId, onSelect }: 
       <text x={100} y={42} textAnchor="middle" fontSize={7} fill="white" fontWeight={600}>
         FRONT
       </text>
-      {/* Cargo body */}
-      <rect x={58} y={92} width={84} height={lastY - 92 + 30} rx={4} fill="#F4F9F1" stroke="#1D323A" strokeOpacity={0.2} />
+      {/* Cargo body (and trailer, drawn as a second box after the hitch) */}
+      {hitchY === null ? (
+        <rect x={58} y={BODY_TOP} width={84} height={lastY - BODY_TOP + 30} rx={4} fill="#F4F9F1" stroke="#1D323A" strokeOpacity={0.2} />
+      ) : (
+        <>
+          <rect x={58} y={BODY_TOP} width={84} height={hitchY - BODY_TOP - 8} rx={4} fill="#F4F9F1" stroke="#1D323A" strokeOpacity={0.2} />
+          <rect x={52} y={hitchY + 4} width={96} height={lastY - hitchY + 26} rx={4} fill="#F4F9F1" stroke="#1D323A" strokeOpacity={0.35} />
+          <circle cx={100} cy={hitchY} r={5} fill="#1D323A" />
+          <text x={100} y={hitchY + 16} textAnchor="middle" fontSize={7} fill="#1D323A" fontWeight={600}>
+            TRAILER
+          </text>
+        </>
+      )}
       {/* Chassis rails */}
       <rect x={80} y={50} width={5} height={lastY - 40} fill="#1D323A" fillOpacity={0.5} />
       <rect x={115} y={50} width={5} height={lastY - 40} fill="#1D323A" fillOpacity={0.5} />

@@ -66,3 +66,16 @@ against real Supabase Postgres, Auth or Realtime**. What was tested instead:
 | API | Owner endpoints now also require role `owner` (403 otherwise). 76 API tests pass (61 old + 15 new). |
 | Real login path | Tested against a **stand-in** for Supabase Auth (wrong password, wrong role, no role, right role, reload, logout). **Not tested against real Supabase**: the project still isn't set up. |
 | Driver and Shipper portals | A welcome page each, listing what's coming in W5 / W6. |
+
+### W3 owner portal part 1: done, 21 Nov 2026
+| Item | Status |
+|---|---|
+| Sidebar layout | **Built.** All 11 sections in the sidebar. Built now: Dashboard, Live Map, Trucks, Truck detail, Alerts. The other 7 show "coming in W4". Top bar: search (truck number / shipment ID), language, notifications bell (open alerts), profile, log out. Phones: bottom tab bar + drawer. |
+| Dashboard | **Built.** KPI tiles, map, "Needs attention now", shipments in transit, maintenance in the next 7 days. Truck status counts and alerts come from real tyre data. "Breakdowns avoided" = problems acknowledged this month; "₹ saved" = that × a **sample assumption of ₹25,000 per breakdown** (said on the tile). |
+| Live Map | **Built** with Leaflet + OpenStreetMap (no paid key). Filters: status, plan, shipment. Side panel. Layers: garages, no-signal zones, ghats, bad roads; **all layer stretches are sample markings, not surveyed data**. OSM's free tile server is fine for a prototype only (usage policy); real customers need a tile provider. |
+| Trucks list | **Built.** Table on desktop, cards on phones, filters, CSV export. |
+| Truck detail | **Built**, 9 tabs. **Tyres tab uses real sensor data** (live chart, leak rate worked out from the last 30 min of readings, "unsafe in ~X h"). Engine / Brakes / Power / Driver / Cargo values, predictions (except tyre ones), tread depth, sensor battery, tyre history, maintenance and documents are **sample data** (labelled "Demo data"). Cards not in the truck's plan are locked and link to Plan & Billing. |
+| Wheel layouts | 6, 10, 12 (twin steer), 14 and 18 (tractor-trailer). New migration `20261121000005_more_axle_layouts.sql` allows them in the database. The wheel counts on sample trucks 0003-0006 are made up for the demo. |
+| Sample fleet | 6 trucks TN 99 ZZ 0001-0006: leak, hot tyre, critical low pressure, offline, all-OK. Only 0001 and 0002 exist in the Supabase seed. |
+| Checked | Every owner page at 360 px and 1440 px: no sideways scroll, no console errors. Production build under /EcoStream/ (GitHub Pages): map, deep links, search, locked card → Plan & Billing, Book garage → 3 garages. RLS check still 33/33. |
+| Not tested | Live updates on these pages against real Supabase Realtime (same code path as before, still no Supabase project). |

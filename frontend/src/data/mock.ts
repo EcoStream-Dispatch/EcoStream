@@ -14,6 +14,11 @@
  *   Truck 2 (10 wheels): FR is hot (95 °C) but NOT leaking    -> high_temp warning only,
  *                        its corrected pressure stays flat (spec acceptance criterion 3)
  *                        Plus one old, acknowledged critical alert so "Closed" isn't empty.
+ *   Truck 3 (12 wheels): all OK, Salem -> Namakkal.
+ *   Truck 4 (14 wheels): R2L-I is at about 78 % of recommended  -> critical_pressure (open)
+ *   Truck 5 (18 wheels): all OK, tractor-trailer leaving Chennai.
+ *   Truck 6 (6 wheels):  parked, no data for over 3 hours       -> shows as Offline
+ * Wheel counts are sample values for the demo, not the makers' real specifications.
  */
 import type { Alert, Garage, NearbyGarage, Reading, Truck, TruckStatus, Tyre, TyreWithStatus, TruckSummary } from '../types'
 import { haversineKm, isOpenNow } from '../lib/geo'
@@ -65,6 +70,10 @@ const trucks: Truck[] = [
     axle_config: '10W',
     created_at: '2026-11-01T00:00:00Z',
   },
+  { id: 'truck-3', owner_id: OWNER_ID, reg_no: 'TN 99 ZZ 0003', make: 'BharatBenz', model: '2823R', axle_config: '12W', created_at: '2026-11-01T00:00:00Z' },
+  { id: 'truck-4', owner_id: OWNER_ID, reg_no: 'TN 99 ZZ 0004', make: 'Eicher', model: 'Pro 6028', axle_config: '14W', created_at: '2026-11-01T00:00:00Z' },
+  { id: 'truck-5', owner_id: OWNER_ID, reg_no: 'TN 99 ZZ 0005', make: 'Tata', model: 'Signa 4825.T', axle_config: '18W', created_at: '2026-11-01T00:00:00Z' },
+  { id: 'truck-6', owner_id: OWNER_ID, reg_no: 'TN 99 ZZ 0006', make: 'Ashok Leyland', model: '3520', axle_config: '6W', created_at: '2026-11-01T00:00:00Z' },
 ]
 
 const RECOMMENDED_KPA = 830 // spec section 8
@@ -91,9 +100,10 @@ const ROUTE: [number, number][] = [
   [12.5186, 78.2137], // Krishnagiri
   [12.1277, 78.1579], // Dharmapuri
   [11.6643, 78.146], // Salem
+  [11.2189, 78.1674], // Namakkal
 ]
 
-/** Point along the route, f from 0 (Chennai) to 1 (Salem). */
+/** Point along the route, f from 0 (Chennai) to 1 (Namakkal). */
 function pointOnRoute(f: number): [number, number] {
   const x = Math.min(Math.max(f, 0), 1) * (ROUTE.length - 1)
   const i = Math.min(Math.floor(x), ROUTE.length - 2)
@@ -109,19 +119,27 @@ function pointOnRoute(f: number): [number, number] {
 interface TruckTrip {
   /** Minutes since the truck started driving */
   startedMinAgo: number
-  /** Where on the route it started / is now (0 = Chennai, 1 = Salem) */
+  /** Where on the route it started / is now (0 = Chennai, 1 = Namakkal) */
   fromF: number
   toF: number
+  /** Minutes ago the truck last sent data (0 = sending now). Over 30 = Offline. */
+  stoppedMinAgo?: number
 }
-const TRIPS: Record<string, TruckTrip> = {
-  'truck-1': { startedMinAgo: 130, fromF: 0.0, toF: 0.36 },
-  'truck-2': { startedMinAgo: 150, fromF: 0.35, toF: 0.72 },
+export const ROUTE_POINTS = ROUTE
+export const TRIPS: Record<string, TruckTrip> = {
+  'truck-1': { startedMinAgo: 130, fromF: 0.0, toF: 0.31 },
+  'truck-2': { startedMinAgo: 150, fromF: 0.3, toF: 0.62 },
+  'truck-3': { startedMinAgo: 90, fromF: 0.84, toF: 0.95 },
+  'truck-4': { startedMinAgo: 200, fromF: 0.42, toF: 0.74 },
+  'truck-5': { startedMinAgo: 40, fromF: 0.0, toF: 0.07 },
+  'truck-6': { startedMinAgo: 400, fromF: 0.7, toF: 0.99, stoppedMinAgo: 190 },
 }
 
 /** Scenario settings per tyre id */
 const LEAK = { tyreId: 'truck-1-RL-O', startedMinAgo: 100, psiPerHour: 3 }
 const HOT = { tyreId: 'truck-2-FR', startedMinAgo: 70, peakC: 95 }
 const OFFLINE = { tyreId: 'truck-1-FL', lastSeenMinAgo: 25 }
+const LOW = { tyreId: 'truck-4-R2L-I', correctedKpa: 648 } // about 78 % of 830
 
 const AMBIENT_C = 30
 const HISTORY_MIN = 120
@@ -135,7 +153,8 @@ for (const tyre of tyres) {
   // Each tyre was filled slightly differently (±1.5 %).
   const fillKpa = tyre.recommended_cold_kpa * (1 + noise(0.015))
 
-  for (let m = HISTORY_MIN; m >= 0; m--) {
+  const stopped = trip.stoppedMinAgo ?? 0
+  for (let m = HISTORY_MIN + stopped; m >= stopped; m--) {
     if (tyre.id === OFFLINE.tyreId && m < OFFLINE.lastSeenMinAgo) continue
 
     const drivingMin = trip.startedMinAgo - m
@@ -151,7 +170,7 @@ for (const tyre of tyres) {
     temp += noise(0.3)
 
     // Corrected pressure stays flat... unless the tyre is leaking.
-    let corrected = fillKpa + noise(1)
+    let corrected = (tyre.id === LOW.tyreId ? LOW.correctedKpa : fillKpa) + noise(1)
     if (tyre.id === LEAK.tyreId && m < LEAK.startedMinAgo) {
       const leakHours = (LEAK.startedMinAgo - m) / 60
       corrected -= psiToKpa(LEAK.psiPerHour) * leakHours
@@ -161,7 +180,7 @@ for (const tyre of tyres) {
     const pressure = gaugeKpaFromCorrected(corrected, temp)
 
     const [lat, lon] = pointOnRoute(
-      trip.fromF + (trip.toF - trip.fromF) * (drivingMin / trip.startedMinAgo),
+      trip.fromF + (trip.toF - trip.fromF) * (drivingMin / (trip.startedMinAgo - stopped)),
     )
 
     readings.push({
@@ -225,6 +244,40 @@ const alerts: Alert[] = [
     message: 'Corrected pressure below 80% of recommended. Stop and inspect the tyre.',
     created_at: iso(26 * 60 * MIN),
     acknowledged_at: iso(25 * 60 * MIN),
+  },
+  {
+    id: 'alert-5',
+    tyre_id: LOW.tyreId,
+    truck_id: 'truck-4',
+    type: 'critical_pressure',
+    severity: 'critical',
+    value: LOW.correctedKpa,
+    message: 'Corrected pressure below 80% of recommended. Stop and inspect the tyre.',
+    created_at: iso(35 * MIN),
+    acknowledged_at: null,
+  },
+  // Older problems the owner acted on (counted as "breakdowns avoided" on the dashboard).
+  {
+    id: 'alert-6',
+    tyre_id: 'truck-3-R1L-O',
+    truck_id: 'truck-3',
+    type: 'slow_leak',
+    severity: 'warning',
+    value: -24,
+    message: 'Pressure is falling about 3.5 psi per hour (temperature-corrected).',
+    created_at: iso(3 * 24 * 60 * MIN),
+    acknowledged_at: iso((3 * 24 * 60 - 20) * MIN),
+  },
+  {
+    id: 'alert-7',
+    tyre_id: 'truck-5-T1R-O',
+    truck_id: 'truck-5',
+    type: 'critical_pressure',
+    severity: 'critical',
+    value: 610,
+    message: 'Corrected pressure below 80% of recommended. Stop and inspect the tyre.',
+    created_at: iso(6 * 24 * 60 * MIN),
+    acknowledged_at: iso((6 * 24 * 60 - 45) * MIN),
   },
 ]
 
@@ -354,4 +407,9 @@ export function mockGetNearestGarages(lat: number, lon: number, service = 'tyre'
     .filter((g) => g.open_now)
     .sort((a, b) => a.distance_km - b.distance_km)
     .slice(0, 3)
+}
+
+/** All garages (for the map layer). Future: GET /api/garages */
+export function mockGetGarages(): Garage[] {
+  return garages.map((g) => ({ ...g }))
 }
