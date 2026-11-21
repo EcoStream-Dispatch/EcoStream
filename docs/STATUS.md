@@ -79,3 +79,16 @@ against real Supabase Postgres, Auth or Realtime**. What was tested instead:
 | Sample fleet | 6 trucks TN 99 ZZ 0001-0006: leak, hot tyre, critical low pressure, offline, all-OK. Only 0001 and 0002 exist in the Supabase seed. |
 | Checked | Every owner page at 360 px and 1440 px: no sideways scroll, no console errors. Production build under /EcoStream/ (GitHub Pages): map, deep links, search, locked card → Plan & Billing, Book garage → 3 garages. RLS check still 33/33. |
 | Not tested | Live updates on these pages against real Supabase Realtime (same code path as before, still no Supabase project). |
+
+### W4 owner portal part 2: done, 21 Nov 2026
+| Item | Status |
+|---|---|
+| Alert centre | **Built, real data.** Tabs Open / Acknowledged / Resolved. New: alerts can be **resolved** (migration `20261121000006_alert_resolved.sql`, API `POST /api/alerts/{id}/resolve`, 3 new API tests, 1 new RLS check: owners still can't write alerts directly). |
+| Alert detail | **Built.** Countdown ("unsafe in ~7 h", from the live leak rate), what to do, 3 nearest open garages (real API), Call, **Book slot → "Garage booked"**, Share with driver (phone share sheet, or copies the text), Acknowledge, Mark resolved. Garage ratings, price ranges and bookings are **sample data**; no garage is really contacted. |
+| Predictive Maintenance | **Built.** Fleet-wide ranking, component filter, cost if ignored vs fix now, "this week" plan. Tyre predictions from live alerts, the rest sample. Engine/brake predictions only for trucks whose plan has that data. |
+| Shipments + Create shipment | **Built on sample data** (no shipments backend). Suggested truck + driver with reasons (health, size for the weight, cold chain, free at pickup, distance). Payload limits per wheel layout are **sample values, not legal limits**. New shipments last only for the browser tab. |
+| Live routing | **Built.** Route = corridor towns (no road-routing service yet), truck's live position, ETA (assumes 45 km/h), km left, stops, warnings ahead (ghat, no signal, bad road), last verified garage before the ghat, timeline (includes real alerts), proof-of-delivery placeholders, share-tracking link (shipper page comes in W6). |
+| Drivers, Garages, Reports, Plan & Billing, Settings | **Built on sample data.** Reports: charts + table, "Download PDF" = browser print to PDF. Plan & Billing: changing a plan unlocks/locks that truck's cards (browser tab only); invoices placeholder ("no payments in demo"). Settings: users & roles, alert thresholds, WhatsApp/SMS/email switches, language: **demo only, nothing saved to a server, no messages sent**. |
+| Flows checked in a browser | Dashboard → Book garage → alert → slot → "Garage booked" → My bookings. Shipments → Create shipment → live routing. Locked card → Plan & Billing → Upgrade → cards unlocked (21 → 0 locked). Mark resolved → moves to Resolved. No console errors. |
+| Layout | Every owner page at 360 px and 1440 px: no sideways scroll, nothing sticking out. |
+| Tests | API 79 passed. RLS check 34/34 PASS (PGlite). |

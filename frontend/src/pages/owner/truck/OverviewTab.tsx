@@ -5,6 +5,7 @@ import { PARAMS, type ParamGroup } from '../../../data/plans'
 import { ALERT_TITLE, formatAlertValue } from '../../../lib/status'
 import { timeAgo } from '../../../lib/format'
 import { positionName } from '../../../lib/tyreLayout'
+import { plannedRoute } from '../../../lib/route'
 import { Card, CardTitle, DemoTag } from '../../../components/owner/ui'
 import StatusBadge from '../../../components/StatusBadge'
 import type { Alert, TruckDetails, TruckSummary, TyreStatus } from '../../../types'
@@ -26,7 +27,7 @@ const SYSTEMS: { name: string; icon: typeof Cog; groups: ParamGroup[]; tab: TabI
 
 export default function OverviewTab({ truck, details, openAlerts }: { truck: TruckSummary; details: TruckDetails; openAlerts: Alert[] }) {
   const s = details.shipment
-  const route: [number, number][] | undefined = s ? [[s.sender.lat, s.sender.lon], [s.receiver.lat, s.receiver.lon]] : undefined
+  const route = s ? plannedRoute([s.sender.lat, s.sender.lon], [s.receiver.lat, s.receiver.lon]) : undefined
   const values = new Map(details.params.map((v) => [v.key, v]))
 
   return (
@@ -42,7 +43,7 @@ export default function OverviewTab({ truck, details, openAlerts }: { truck: Tru
         )}
         <p className="mt-2 text-xs text-navy-700">
           Last position {timeAgo(truck.last_seen_at)}
-          {route && ' · dashed line: straight line from sender to receiver (road route comes in stage W4)'}
+          {route && ' · dashed line: planned route'}
         </p>
       </Card>
 
@@ -50,7 +51,9 @@ export default function OverviewTab({ truck, details, openAlerts }: { truck: Tru
         <CardTitle right={<DemoTag />}>Current trip</CardTitle>
         {s ? (
           <>
-            <p className="font-heading text-xs font-bold">{s.id}</p>
+            <Link to={`/owner/shipments/${s.id}`} className="font-heading text-xs font-bold text-green-700 hover:text-green-500">
+              {s.id} · live routing →
+            </Link>
             <ol className="mt-2 space-y-3">
               {[
                 { label: 'From', p: s.sender },

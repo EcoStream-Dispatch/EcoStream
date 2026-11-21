@@ -85,6 +85,8 @@ export interface Alert {
   message: string
   created_at: string
   acknowledged_at: string | null
+  /** Set when the problem is fixed (stage W4). Resolving also acknowledges. */
+  resolved_at?: string | null
 }
 
 export interface Garage {
@@ -263,4 +265,69 @@ export interface MapLayers {
   dead_zones: MapPath[]
   ghats: MapPath[]
   bad_roads: MapPath[]
+}
+
+// ---------- Owner portal part 2 (website stage W4) ----------
+
+export interface Booking {
+  id: string
+  truck_id: string
+  alert_id: string | null
+  garage_id: string
+  garage_name: string
+  garage_phone: string
+  /** ISO time of the slot */
+  slot: string
+  what: string
+  status: 'confirmed' | 'done' | 'cancelled'
+  created_at: string
+}
+
+export interface ShipmentEvent {
+  ts: string
+  kind: 'created' | 'picked_up' | 'checkpoint' | 'alert' | 'delivered'
+  text: string
+}
+
+export interface NewShipment {
+  sender: Place
+  receiver: Place
+  goods: string
+  weight_t: number
+  cold_chain: boolean
+  pickup_at: string
+  truck_id: string
+  driver_id: string | null
+  notify_shipper: boolean
+}
+
+export interface TeamUser {
+  id: string
+  name: string
+  email: string
+  role: 'owner' | 'manager' | 'viewer'
+}
+
+export interface AlertThresholds {
+  low_pressure_pct: number
+  critical_pressure_pct: number
+  max_temp_c: number
+  leak_warning_psi_per_hour: number
+}
+
+export interface NotificationSettings {
+  whatsapp: boolean
+  sms: boolean
+  email: boolean
+  phone: string
+  email_address: string
+}
+
+export interface MonthReport {
+  month: string
+  saved_rupees: number
+  breakdowns_avoided: number
+  alerts_acted_on: number
+  fuel_km_per_l: number
+  idle_min_per_day: number
 }

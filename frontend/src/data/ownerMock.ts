@@ -12,7 +12,13 @@
  * companies are "Sample ..." on the Chennai - Krishnagiri - Salem - Namakkal corridor.
  */
 import type {
+  AlertThresholds,
+  AlertType,
+  Booking,
   ComplianceDoc,
+  MonthReport,
+  NotificationSettings,
+  TeamUser,
   Driver,
   MaintenanceItem,
   MapLayers,
@@ -76,6 +82,7 @@ export const SHIPMENTS: Shipment[] = [
   { id: 'SHP-1003', sender: PLACES.salem, receiver: PLACES.namakkal, goods: 'Steel rods', weight_t: 21, truck_id: 'TN 99 ZZ 0003', driver_id: 'drv-3', status: 'in_transit', pickup_at: isoIn(-1.6 * 60 * 60e3), eta: isoIn(0.7 * 60 * 60e3), distance_left_km: 22 },
   { id: 'SHP-1004', sender: PLACES.vellore, receiver: PLACES.salem, goods: 'Finished leather', weight_t: 12, truck_id: 'TN 99 ZZ 0004', driver_id: 'drv-4', status: 'delayed', pickup_at: isoIn(-3.4 * 60 * 60e3), eta: isoIn(4.5 * 60 * 60e3), distance_left_km: 96 },
   { id: 'SHP-1005', sender: PLACES.chennai, receiver: PLACES.namakkal, goods: 'Chilled dairy (2-8 °C)', weight_t: 18, truck_id: 'TN 99 ZZ 0005', driver_id: 'drv-5', status: 'in_transit', pickup_at: isoIn(-0.8 * 60 * 60e3), eta: isoIn(7.2 * 60 * 60e3), distance_left_km: 352 },
+  { id: 'SHP-0998', sender: PLACES.namakkal, receiver: PLACES.chennai, goods: 'Poultry feed bags', weight_t: 15, truck_id: 'TN 99 ZZ 0003', driver_id: 'drv-3', status: 'delivered', pickup_at: isoIn(-30 * 60 * 60e3), eta: isoIn(-22 * 60 * 60e3), distance_left_km: 0 },
   { id: 'SHP-1006', sender: PLACES.krishnagiri, receiver: PLACES.chennai, goods: 'Mango pulp cans', weight_t: 10, truck_id: null, driver_id: null, status: 'scheduled', pickup_at: isoIn(20 * 60 * 60e3), eta: null, distance_left_km: null },
 ]
 
@@ -321,4 +328,96 @@ export const MAP_LAYERS: MapLayers = {
     { name: 'Bad road (sample): Krishnagiri service road', points: [[12.55, 78.24], [12.5, 78.21]] },
     { name: 'Bad road (sample): Rasipuram stretch', points: [[11.48, 78.18], [11.42, 78.18]] },
   ],
+}
+
+// ---------------------------------------------------------------------
+// Stage W4: garages (rating, price), bookings, team, settings, reports
+// ---------------------------------------------------------------------
+
+/** Ratings and prices of the FICTIONAL sample garages (keyed by garage number 1-13). */
+export function garageExtra(garageId: string): { rating: number; jobs: number } {
+  const n = Number(garageId.replace(/\D/g, '')) || 1
+  return { rating: Math.round((4 + ((n * 7) % 9) / 10) * 10) / 10, jobs: 20 + ((n * 37) % 140) }
+}
+
+/** Sample price range for the job an alert needs (₹). */
+export const PRICE_ESTIMATE: Record<AlertType, { what: string; from: number; to: number }> = {
+  slow_leak: { what: 'Puncture / valve repair', from: 300, to: 600 },
+  low_pressure: { what: 'Check and inflate', from: 100, to: 300 },
+  critical_pressure: { what: 'Tyre inspection, repair or change', from: 500, to: 18_000 },
+  high_temp: { what: 'Brake and wheel-bearing check', from: 800, to: 3_500 },
+  sensor_offline: { what: 'Sensor check', from: 0, to: 500 },
+}
+
+/** Garage bookings made in this browser session (kept in memory, not saved). */
+export const BOOKINGS: Booking[] = [
+  { id: 'BK-2001', truck_id: 'TN 99 ZZ 0003', alert_id: null, garage_id: 'garage-13', garage_name: 'Sample Tyre Works 13', garage_phone: '+91 90000 00013', slot: isoIn(-3 * DAY + 2 * 60 * 60e3), what: 'Puncture / valve repair', status: 'done', created_at: isoIn(-3 * DAY) },
+]
+
+export const TEAM: TeamUser[] = [
+  { id: 'u-1', name: 'Demo Owner', email: 'demo.owner@example.com', role: 'owner' },
+  { id: 'u-2', name: 'Kavitha R. (sample)', email: 'manager@example.com', role: 'manager' },
+  { id: 'u-3', name: 'Accounts (sample)', email: 'viewer@example.com', role: 'viewer' },
+]
+
+/** Same starting values as api/alert_config.py (2 psi/h is about 13.8 kPa/h). */
+export const THRESHOLDS: AlertThresholds = {
+  low_pressure_pct: 90,
+  critical_pressure_pct: 80,
+  max_temp_c: 85,
+  leak_warning_psi_per_hour: 2,
+}
+
+export const NOTIFICATIONS: NotificationSettings = {
+  whatsapp: true,
+  sms: true,
+  email: false,
+  phone: '+91 90000 30001',
+  email_address: 'demo.owner@example.com',
+}
+
+/** Six months of SAMPLE report numbers (oldest first). */
+export function sampleReports(now = new Date()): MonthReport[] {
+  const rows: MonthReport[] = []
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const k = 5 - i
+    rows.push({
+      month: d.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }),
+      breakdowns_avoided: [0, 1, 1, 2, 2, 3][k],
+      saved_rupees: [0, 25_000, 25_000, 50_000, 50_000, 75_000][k],
+      alerts_acted_on: [3, 5, 6, 8, 9, 11][k],
+      fuel_km_per_l: [3.3, 3.35, 3.4, 3.45, 3.5, 3.55][k],
+      idle_min_per_day: [68, 64, 60, 55, 50, 46][k],
+    })
+  }
+  return rows
+}
+
+/** Tyre cost per km by brand (SAMPLE, ₹ per 100 km). */
+export const TYRE_COST_BY_BRAND = [
+  { brand: 'Brand A (sample)', per100km: 118 },
+  { brand: 'Brand B (sample)', per100km: 104 },
+  { brand: 'Brand C (sample)', per100km: 131 },
+]
+
+/** Past trips per driver (SAMPLE). */
+export function sampleTrips(driverId: string) {
+  const n = Number(driverId.replace(/\D/g, '')) || 1
+  const routes = [
+    ['Chennai', 'Krishnagiri', 252],
+    ['Salem', 'Chennai', 340],
+    ['Vellore', 'Namakkal', 260],
+    ['Namakkal', 'Sriperumbudur', 330],
+    ['Krishnagiri', 'Salem', 115],
+  ] as const
+  return Array.from({ length: 5 }, (_, i) => {
+    const [from, to, km] = routes[(i + n) % routes.length]
+    return { date: dateIn(-(i * 3 + n)), from, to, km, score: Math.min(98, 60 + ((n * 13 + i * 7) % 35)) }
+  })
+}
+
+/** Driver score, last 8 weeks (SAMPLE). */
+export function sampleScoreTrend(score: number): number[] {
+  return Array.from({ length: 8 }, (_, i) => Math.max(40, Math.min(99, score - 8 + i + ((i * 5) % 3))))
 }

@@ -219,6 +219,18 @@ def acknowledge_alert(
     return store.acknowledge_alert(str(alert_id), utc_now())
 
 
+@app.post("/api/alerts/{alert_id}/resolve")
+def resolve_alert(
+    alert_id: UUID,
+    repo: Annotated[db.OwnerRepo, Depends(get_owner_repo)],
+    store=Depends(get_ingest_store),
+):
+    """The problem is fixed (stage W4). Also acknowledges the alert if it wasn't yet."""
+    if not repo.alert(str(alert_id)):
+        raise HTTPException(404, "Alert not found")
+    return store.resolve_alert(str(alert_id), utc_now())
+
+
 @app.get("/api/garages/nearest")
 def garages_nearest(
     repo: Annotated[db.OwnerRepo, Depends(get_owner_repo)],

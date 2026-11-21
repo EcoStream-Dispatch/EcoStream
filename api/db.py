@@ -88,6 +88,7 @@ class IngestStore(Protocol):
     def insert_alerts(self, rows: list[dict]) -> list[dict]: ...
     def touch_device(self, device_id: str, ts: datetime) -> None: ...
     def acknowledge_alert(self, alert_id: str, ts: datetime) -> Optional[dict]: ...
+    def resolve_alert(self, alert_id: str, ts: datetime) -> Optional[dict]: ...
 
 
 class IngestRepo:
@@ -149,6 +150,15 @@ class IngestRepo:
         """Set acknowledged_at if not already set. Call only after checking the owner can see the alert."""
         self.db.table("alerts").update({"acknowledged_at": ts.isoformat()}).eq("id", alert_id).is_(
             "acknowledged_at", "null"
+        ).execute()
+        rows = self.db.table("alerts").select("*").eq("id", alert_id).limit(1).execute().data
+        return rows[0] if rows else None
+
+    def resolve_alert(self, alert_id: str, ts: datetime) -> Optional[dict]:
+        """Mark an alert resolved (and acknowledged, if it wasn't). Check ownership first."""
+        self.acknowledge_alert(alert_id, ts)
+        self.db.table("alerts").update({"resolved_at": ts.isoformat()}).eq("id", alert_id).is_(
+            "resolved_at", "null"
         ).execute()
         rows = self.db.table("alerts").select("*").eq("id", alert_id).limit(1).execute().data
         return rows[0] if rows else None

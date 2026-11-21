@@ -59,7 +59,7 @@ class FakeStore:
         return [a for a in self.alerts if a["truck_id"] == truck_id and parse_ts(a["created_at"]) >= since]
 
     def insert_alerts(self, rows):
-        stored = [{**r, "id": str(uuid.uuid4()), "acknowledged_at": None} for r in rows]
+        stored = [{**r, "id": str(uuid.uuid4()), "acknowledged_at": None, "resolved_at": None} for r in rows]
         self.alerts.extend(stored)
         return stored
 
@@ -74,6 +74,12 @@ class FakeStore:
                 a["acknowledged_at"] = a["acknowledged_at"] or ts.isoformat()
                 return a
         return None
+
+    def resolve_alert(self, alert_id, ts):
+        a = self.acknowledge_alert(alert_id, ts)
+        if a:
+            a["resolved_at"] = a.get("resolved_at") or ts.isoformat()
+        return a
 
 
 # ---------------------------------------------------------------------------

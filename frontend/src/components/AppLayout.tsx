@@ -42,14 +42,14 @@ export const OWNER_NAV: NavItem[] = [
   { to: '/owner/dashboard', label: 'owner.dashboard', icon: LayoutDashboard },
   { to: '/owner/map', label: 'owner.map', icon: MapIcon },
   { to: '/owner/trucks', label: 'owner.trucks', icon: Truck },
-  { to: '/owner/predictive', label: 'owner.predictive', icon: Activity, soon: true },
+  { to: '/owner/predictive', label: 'owner.predictive', icon: Activity },
   { to: '/owner/alerts', label: 'owner.alerts', icon: BellRing },
-  { to: '/owner/shipments', label: 'owner.shipments', icon: Package, soon: true },
-  { to: '/owner/drivers', label: 'owner.drivers', icon: Users, soon: true },
-  { to: '/owner/garages', label: 'owner.garages', icon: Wrench, soon: true },
-  { to: '/owner/reports', label: 'owner.reports', icon: BarChart3, soon: true },
-  { to: '/owner/plan', label: 'owner.plan', icon: CreditCard, soon: true },
-  { to: '/owner/settings', label: 'owner.settings', icon: Settings, soon: true },
+  { to: '/owner/shipments', label: 'owner.shipments', icon: Package },
+  { to: '/owner/drivers', label: 'owner.drivers', icon: Users },
+  { to: '/owner/garages', label: 'owner.garages', icon: Wrench },
+  { to: '/owner/reports', label: 'owner.reports', icon: BarChart3 },
+  { to: '/owner/plan', label: 'owner.plan', icon: CreditCard },
+  { to: '/owner/settings', label: 'owner.settings', icon: Settings },
 ]
 
 const PHONE_TABS = OWNER_NAV.filter((n) => ['/owner/dashboard', '/owner/map', '/owner/trucks', '/owner/alerts'].includes(n.to))
@@ -85,10 +85,10 @@ function Shell() {
   useEffect(() => setDrawer(false), [pathname])
 
   return (
-    <div className="min-h-screen bg-gray-50 lg:pl-64">
+    <div className="min-h-screen bg-gray-50 lg:pl-64 print:bg-white print:pl-0">
       {/* Sidebar: fixed on wide screens, a drawer on phones */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-navy-900 text-white transition-transform lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 w-64 transform print:hidden bg-navy-900 text-white transition-transform lg:translate-x-0 ${
           drawer ? 'translate-x-0' : '-translate-x-full'
         }`}
         aria-label="Owner menu"
@@ -106,7 +106,7 @@ function Shell() {
       </main>
 
       {/* Phone tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-gray-200 bg-white lg:hidden" aria-label="Main">
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-gray-200 bg-white lg:hidden print:hidden" aria-label="Main">
         {PHONE_TABS.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
@@ -185,7 +185,7 @@ function TopBar({ onMenu }: { onMenu: () => void }) {
   const who = session?.user.email ?? 'Demo owner'
 
   return (
-    <header className="sticky top-0 z-20 border-b border-gray-200 bg-white">
+    <header className="sticky top-0 z-20 border-b border-gray-200 bg-white print:hidden">
       <div className="flex items-center gap-2 px-4 py-2 lg:px-6">
         <button onClick={onMenu} className="-ml-1 rounded-lg p-2 text-navy-900 hover:bg-gray-100 lg:hidden" aria-label={t('nav.menu')}>
           <Menu size={22} aria-hidden />

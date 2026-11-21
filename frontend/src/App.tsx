@@ -12,12 +12,21 @@ import AlertsPage from './pages/AlertsPage'
 import DashboardPage from './pages/owner/DashboardPage'
 import LiveMapPage from './pages/owner/LiveMapPage'
 import TrucksPage from './pages/owner/TrucksPage'
-import ComingSoonPage from './pages/owner/ComingSoonPage'
+import PredictivePage from './pages/owner/PredictivePage'
+import ShipmentsPage from './pages/owner/ShipmentsPage'
+import CreateShipmentPage from './pages/owner/CreateShipmentPage'
+import ShipmentRoutingPage from './pages/owner/ShipmentRoutingPage'
+import DriversPage, { DriverProfilePage } from './pages/owner/DriversPage'
+import GaragesPage from './pages/owner/GaragesPage'
+import PlanBillingPage from './pages/owner/PlanBillingPage'
+import SettingsPage from './pages/owner/SettingsPage'
+import AlertDetailPage from './pages/owner/AlertDetailPage'
 import { Loading } from './components/PageState'
 
 // The Truck page pulls in the chart library (recharts), which is big.
 // Loading it only when needed keeps the first page load fast on phones.
 const TruckDetailPage = lazy(() => import('./pages/owner/truck/TruckDetailPage'))
+const ReportsPage = lazy(() => import('./pages/owner/ReportsPage'))
 
 /** Old links from before stage W3 (/trucks/:id) go to the new owner portal address. */
 function OldTruckLink() {
@@ -59,10 +68,24 @@ export default function App() {
           }
         />
         <Route path="/owner/alerts" element={<AlertsPage />} />
-        {/* Built in stage W4 */}
-        {['predictive', 'shipments', 'drivers', 'garages', 'reports', 'plan', 'settings'].map((p) => (
-          <Route key={p} path={`/owner/${p}/*`} element={<ComingSoonPage />} />
-        ))}
+        <Route path="/owner/alerts/:id" element={<AlertDetailPage />} />
+        <Route path="/owner/predictive" element={<PredictivePage />} />
+        <Route path="/owner/shipments" element={<ShipmentsPage />} />
+        <Route path="/owner/shipments/new" element={<CreateShipmentPage />} />
+        <Route path="/owner/shipments/:id" element={<ShipmentRoutingPage />} />
+        <Route path="/owner/drivers" element={<DriversPage />} />
+        <Route path="/owner/drivers/:id" element={<DriverProfilePage />} />
+        <Route path="/owner/garages" element={<GaragesPage />} />
+        <Route
+          path="/owner/reports"
+          element={
+            <Suspense fallback={<Loading what="reports" />}>
+              <ReportsPage />
+            </Suspense>
+          }
+        />
+        <Route path="/owner/plan" element={<PlanBillingPage />} />
+        <Route path="/owner/settings" element={<SettingsPage />} />
       </Route>
       {/* Old addresses from before stage W3 */}
       <Route path="/fleet" element={<Navigate to="/owner/dashboard" replace />} />

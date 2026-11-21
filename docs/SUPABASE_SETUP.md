@@ -8,6 +8,7 @@ Files you will paste from:
 - `supabase/migrations/20261120000003_latest_reading_view.sql`: fast "latest reading per tyre" view
 - `supabase/migrations/20261121000004_profiles_roles.sql`: login roles (owner / driver / shipper)
 - `supabase/migrations/20261121000005_more_axle_layouts.sql`: allows 12, 14 and 18-wheel trucks
+- `supabase/migrations/20261121000006_alert_resolved.sql`: "resolved" state for alerts
 - `supabase/seed.sql`: demo owner, 2 trucks × 6 tyres, 13 fake garages
 - `supabase/tests/rls_check.sql`: checks owners only see their own data
 
@@ -31,7 +32,8 @@ Files you will paste from:
 4. New query again. Paste all of `supabase/migrations/20261120000003_latest_reading_view.sql` → **Run**.
 5. New query again. Paste all of `supabase/migrations/20261121000004_profiles_roles.sql` → **Run**.
 6. New query again. Paste all of `supabase/migrations/20261121000005_more_axle_layouts.sql` → **Run**.
-7. Check: left menu → **Table Editor**. You should see 8 tables: `alerts`, `devices`, `fleet_owners`, `garages`, `profiles`, `readings`, `trucks`, `tyres`.
+7. New query again. Paste all of `supabase/migrations/20261121000006_alert_resolved.sql` → **Run**.
+8. Check: left menu → **Table Editor**. You should see 8 tables: `alerts`, `devices`, `fleet_owners`, `garages`, `profiles`, `readings`, `trucks`, `tyres`.
 
 ## 3. Create the demo owner login
 1. Left menu → **Authentication** → **Users** → **Add user** → **Create new user**.
@@ -62,7 +64,7 @@ Check in Table Editor: `trucks` has 2 rows, `tyres` 12, `garages` 13, `profiles`
 
 ## 5. Check the security (acceptance criterion 5)
 SQL Editor → New query → paste all of `supabase/tests/rls_check.sql` → **Run**.
-You get a table of 33 checks (18 from Stage 6, 15 for login roles). **Every row must say PASS.** It cleans up after itself.
+You get a table of 34 checks (18 from Stage 6, 15 for login roles, 1 for resolving alerts). **Every row must say PASS.** It cleans up after itself.
 If anything says FAIL, stop and tell Hari/Claude. Don't put real data in yet.
 
 ## 6. Check realtime is on

@@ -24,6 +24,7 @@ import type { Alert, Garage, NearbyGarage, Reading, Truck, TruckStatus, Tyre, Ty
 import { haversineKm, isOpenNow } from '../lib/geo'
 import { gaugeKpaFromCorrected, psiToKpa } from '../lib/units'
 import { positionsFor } from '../lib/tyreLayout'
+import { CORRIDOR } from '../lib/route'
 
 // ---------- Helpers ----------
 
@@ -91,17 +92,8 @@ const tyres: Tyre[] = trucks.flatMap((truck, ti) =>
 
 // ---------- Route: Chennai -> Salem (for lat/lon) ----------
 
-// Rough waypoints along the highway. Trucks move between them.
-const ROUTE: [number, number][] = [
-  [13.0827, 80.2707], // Chennai
-  [12.9675, 79.9419], // Sriperumbudur
-  [12.9165, 79.1325], // Vellore
-  [12.6820, 78.6206], // Vaniyambadi
-  [12.5186, 78.2137], // Krishnagiri
-  [12.1277, 78.1579], // Dharmapuri
-  [11.6643, 78.146], // Salem
-  [11.2189, 78.1674], // Namakkal
-]
+// Waypoints along the highway (src/lib/route.ts). Trucks move between them.
+const ROUTE: [number, number][] = CORRIDOR.map((c) => c.at)
 
 /** Point along the route, f from 0 (Chennai) to 1 (Namakkal). */
 function pointOnRoute(f: number): [number, number] {
@@ -125,7 +117,6 @@ interface TruckTrip {
   /** Minutes ago the truck last sent data (0 = sending now). Over 30 = Offline. */
   stoppedMinAgo?: number
 }
-export const ROUTE_POINTS = ROUTE
 export const TRIPS: Record<string, TruckTrip> = {
   'truck-1': { startedMinAgo: 130, fromF: 0.0, toF: 0.31 },
   'truck-2': { startedMinAgo: 150, fromF: 0.3, toF: 0.62 },
@@ -211,6 +202,7 @@ const alerts: Alert[] = [
     message: 'Pressure is falling about 3 psi per hour (temperature-corrected). Check for a puncture or valve leak.',
     created_at: iso((LEAK.startedMinAgo - 18) * MIN),
     acknowledged_at: null,
+    resolved_at: null,
   },
   {
     id: 'alert-2',
@@ -222,6 +214,7 @@ const alerts: Alert[] = [
     message: 'No reading from this tyre sensor for 10 minutes. Sensor battery or signal may be the problem.',
     created_at: iso((OFFLINE.lastSeenMinAgo - 10) * MIN),
     acknowledged_at: null,
+    resolved_at: null,
   },
   {
     id: 'alert-3',
@@ -233,6 +226,7 @@ const alerts: Alert[] = [
     message: 'Tyre temperature is above 85 °C. Pressure is normal once corrected, so this is heat, not a leak. Check brakes and bearings.',
     created_at: iso(30 * MIN),
     acknowledged_at: null,
+    resolved_at: null,
   },
   {
     id: 'alert-4',
@@ -244,6 +238,7 @@ const alerts: Alert[] = [
     message: 'Corrected pressure below 80% of recommended. Stop and inspect the tyre.',
     created_at: iso(26 * 60 * MIN),
     acknowledged_at: iso(25 * 60 * MIN),
+    resolved_at: iso(23 * 60 * MIN),
   },
   {
     id: 'alert-5',
@@ -255,6 +250,7 @@ const alerts: Alert[] = [
     message: 'Corrected pressure below 80% of recommended. Stop and inspect the tyre.',
     created_at: iso(35 * MIN),
     acknowledged_at: null,
+    resolved_at: null,
   },
   // Older problems the owner acted on (counted as "breakdowns avoided" on the dashboard).
   {
@@ -267,6 +263,7 @@ const alerts: Alert[] = [
     message: 'Pressure is falling about 3.5 psi per hour (temperature-corrected).',
     created_at: iso(3 * 24 * 60 * MIN),
     acknowledged_at: iso((3 * 24 * 60 - 20) * MIN),
+    resolved_at: iso((3 * 24 * 60 - 140) * MIN),
   },
   {
     id: 'alert-7',
@@ -278,6 +275,7 @@ const alerts: Alert[] = [
     message: 'Corrected pressure below 80% of recommended. Stop and inspect the tyre.',
     created_at: iso(6 * 24 * 60 * MIN),
     acknowledged_at: iso((6 * 24 * 60 - 45) * MIN),
+    resolved_at: null,
   },
 ]
 
@@ -395,6 +393,16 @@ export function mockAckAlert(id: string): Alert {
   const alert = alerts.find((a) => a.id === id)
   if (!alert) throw new Error('Alert not found')
   alert.acknowledged_at ??= new Date().toISOString()
+  return { ...alert }
+}
+
+/** POST /api/alerts/{id}/resolve */
+export function mockResolveAlert(id: string): Alert {
+  const alert = alerts.find((a) => a.id === id)
+  if (!alert) throw new Error('Alert not found')
+  const now = new Date().toISOString()
+  alert.acknowledged_at ??= now
+  alert.resolved_at ??= now
   return { ...alert }
 }
 

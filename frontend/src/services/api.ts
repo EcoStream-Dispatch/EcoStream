@@ -9,7 +9,14 @@
  */
 import type {
   Alert,
+  AlertThresholds,
+  Booking,
   Driver,
+  MonthReport,
+  NewShipment,
+  NotificationSettings,
+  ShipmentEvent,
+  TeamUser,
   Garage,
   MapLayers,
   NearbyGarage,
@@ -21,6 +28,7 @@ import type {
 } from '../types'
 import {
   mockAckAlert,
+  mockResolveAlert,
   mockGetAlerts,
   mockGetGarages,
   mockGetNearestGarages,
@@ -28,8 +36,18 @@ import {
   mockGetTrucks,
 } from '../data/mock'
 import {
+  BOOKINGS,
   DEFAULT_PROFILE,
   DRIVERS,
+  NOTIFICATIONS,
+  PRICE_ESTIMATE,
+  TEAM,
+  THRESHOLDS,
+  TYRE_COST_BY_BRAND,
+  garageExtra,
+  sampleReports,
+  sampleScoreTrend,
+  sampleTrips,
   MAP_LAYERS,
   PREDICTIONS,
   PROFILES,
@@ -39,6 +57,10 @@ import {
   sampleTyreExtras,
 } from '../data/ownerMock'
 import { kpaToPsi } from '../lib/units'
+import { kmAlong, plannedRoute, routeLengthKm, townsOnRoute, type LatLon } from '../lib/route'
+import type { Candidate } from '../lib/dispatch'
+import { truckHealth } from '../lib/status'
+import type { AddOnId, PlanId } from '../data/plans'
 import { supabase, SUPABASE_CONFIGURED } from '../lib/supabase'
 
 /** True in demo mode. The UI shows a "Demo data" label when true. */
@@ -124,6 +146,12 @@ export async function getAlerts(open?: boolean): Promise<Alert[]> {
 export async function ackAlert(id: string): Promise<Alert> {
   if (USING_MOCK_DATA) return delay(mockAckAlert(id))
   return request(`/api/alerts/${encodeURIComponent(id)}/ack`, { method: 'POST' })
+}
+
+/** POST /api/alerts/{id}/resolve - the problem is fixed (also acknowledges) */
+export async function resolveAlert(id: string): Promise<Alert> {
+  if (USING_MOCK_DATA) return delay(mockResolveAlert(id))
+  return request(`/api/alerts/${encodeURIComponent(id)}/resolve`, { method: 'POST' })
 }
 
 /** GET /api/garages/nearest?lat=&lon=&service=tyre - 3 nearest garages open now */
@@ -369,4 +397,167 @@ export function breakdownsAvoidedThisMonth(allAlerts: Alert[], now = new Date())
       new Date(a.created_at).getTime() >= monthStart &&
       (a.severity === 'critical' || a.type === 'slow_leak'),
   ).length
+}
+
+/* ------------------------------------------------------------------
+ * Owner portal part 2 (stage W4). All sample data, kept in memory for this
+ * browser tab (nothing is saved to a server). Pages label it "Demo data".
+ * ------------------------------------------------------------------ */
+
+const regOf = (trucks: TruckSummary[], id: string | null) => trucks.find((t) => t.id === id)?.reg_no ?? null
+
+// Future: GET /api/bookings
+export async function getBookings(trucks: TruckSummary[]): Promise<Booking[]> {
+  const ids = regToId(trucks)
+  return delay(BOOKINGS.map((b) => ({ ...b, truck_id: ids.get(b.truck_id) ?? b.truck_id })).sort((a, b) => b.slot.localeCompare(a.slot)))
+}
+
+// Future: POST /api/bookings
+export async function bookGarage(
+  trucks: TruckSummary[],
+  input: { truck_id: string; alert_id: string | null; garage: Garage; slot: string; what: string },
+): Promise<Booking> {
+  const booking: Booking = {
+    id: `BK-${2001 + BOOKINGS.length}`,
+    truck_id: regOf(trucks, input.truck_id) ?? input.truck_id,
+    alert_id: input.alert_id,
+    garage_id: input.garage.id,
+    garage_name: input.garage.name,
+    garage_phone: input.garage.phone,
+    slot: input.slot,
+    what: input.what,
+    status: 'confirmed',
+    created_at: new Date().toISOString(),
+  }
+  BOOKINGS.push(booking)
+  return delay({ ...booking, truck_id: input.truck_id })
+}
+
+// Future: GET /api/shipments/{id}
+export async function getShipment(trucks: TruckSummary[], id: string): Promise<Shipment | null> {
+  return (await getShipments(trucks)).find((s) => s.id === id) ?? null
+}
+
+// Future: POST /api/shipments
+export async function createShipment(trucks: TruckSummary[], input: NewShipment): Promise<Shipment> {
+  const n = 1000 + SHIPMENTS.filter((s) => s.id.startsWith('SHP-1')).length + 1
+  const route = plannedRoute([input.sender.lat, input.sender.lon], [input.receiver.lat, input.receiver.lon])
+  const row: Shipment = {
+    id: `SHP-${n}`,
+    sender: input.sender,
+    receiver: input.receiver,
+    goods: input.cold_chain ? `${input.goods} (chilled)` : input.goods,
+    weight_t: input.weight_t,
+    truck_id: regOf(trucks, input.truck_id),
+    driver_id: input.driver_id,
+    status: 'scheduled',
+    pickup_at: input.pickup_at,
+    // Rough ETA: 45 km/h average on this corridor (sample assumption)
+    eta: new Date(new Date(input.pickup_at).getTime() + (routeLengthKm(route) / 45) * 3_600_000).toISOString(),
+    distance_left_km: Math.round(routeLengthKm(route)),
+  }
+  SHIPMENTS.push(row)
+  return delay({ ...row, truck_id: input.truck_id })
+}
+
+/** Planned route, where the truck is on it, and km left. */
+export function shipmentRoute(s: Shipment, truck: TruckSummary | undefined) {
+  const route = plannedRoute([s.sender.lat, s.sender.lon], [s.receiver.lat, s.receiver.lon])
+  const total = routeLengthKm(route)
+  const moving = s.status === 'in_transit' || s.status === 'delayed'
+  const at: LatLon | null = moving && truck?.lat != null && truck.lon != null ? [truck.lat, truck.lon] : null
+  const done = s.status === 'delivered' ? total : at ? kmAlong(route, at) : 0
+  return { route, totalKm: total, doneKm: done, leftKm: Math.max(0, total - done), truckAt: at, towns: townsOnRoute(route) }
+}
+
+/** Timeline: created, picked up, towns passed, alerts on the way, delivered. Sample + real alerts. */
+export function shipmentEvents(s: Shipment, truck: TruckSummary | undefined, alerts: Alert[]): ShipmentEvent[] {
+  const ev: ShipmentEvent[] = []
+  const pickup = new Date(s.pickup_at).getTime()
+  ev.push({ ts: new Date(pickup - 20 * 3_600_000).toISOString(), kind: 'created', text: `Shipment ${s.id} created` })
+  if (s.status === 'scheduled') return ev
+  ev.push({ ts: s.pickup_at, kind: 'picked_up', text: `Picked up at ${s.sender.name}, ${s.sender.city}` })
+  const { route, towns, doneKm, totalKm } = shipmentRoute(s, truck)
+  const now = Date.now()
+  const end = s.status === 'delivered' && s.eta ? new Date(s.eta).getTime() : now
+  towns.slice(1, -1).forEach((town) => {
+    const km = kmAlong(route, route.find((p) => townsOnRoute([p])[0] === town)!)
+    if (km <= doneKm) ev.push({ ts: new Date(pickup + (end - pickup) * (km / Math.max(doneKm, 1))).toISOString(), kind: 'checkpoint', text: `Crossed ${town}` })
+  })
+  for (const a of alerts.filter((x) => x.truck_id === truck?.id && new Date(x.created_at).getTime() >= pickup)) {
+    ev.push({ ts: a.created_at, kind: 'alert', text: a.message })
+  }
+  if (s.status === 'delivered' && s.eta) ev.push({ ts: s.eta, kind: 'delivered', text: `Delivered to ${s.receiver.name} (${Math.round(totalKm)} km)` })
+  return ev.sort((a, b) => a.ts.localeCompare(b.ts))
+}
+
+/** Every truck as a dispatch candidate (see src/lib/dispatch.ts). */
+export function dispatchCandidates(trucks: TruckSummary[], shipments: Shipment[], drivers: Driver[]): Candidate[] {
+  return trucks.map((truck) => {
+    const seed = PROFILES[truck.reg_no] ?? DEFAULT_PROFILE
+    const current = shipments.find((s) => s.truck_id === truck.id && s.status !== 'delivered' && s.status !== 'scheduled')
+    return {
+      truck,
+      health: truckHealth(truck),
+      addOns: seed.add_ons,
+      driver: drivers.find((d) => d.id === seed.driver_id) ?? null,
+      busyUntil: current?.eta ?? null,
+      startsAt: current ? [current.receiver.lat, current.receiver.lon] : truck.lat != null && truck.lon != null ? [truck.lat, truck.lon] : null,
+    }
+  })
+}
+
+// Future: PATCH /api/trucks/{id}/plan
+export async function setTruckPlan(truck: TruckSummary, plan: PlanId, addOns: AddOnId[]): Promise<void> {
+  const seed = PROFILES[truck.reg_no] ?? (PROFILES[truck.reg_no] = { ...DEFAULT_PROFILE })
+  seed.plan = plan
+  seed.add_ons = addOns
+  return delay(undefined)
+}
+
+export function planDetails(truck: TruckSummary): { plan: PlanId; addOns: AddOnId[] } {
+  const seed = PROFILES[truck.reg_no] ?? DEFAULT_PROFILE
+  return { plan: seed.plan, addOns: [...seed.add_ons] }
+}
+
+// Future: GET/POST /api/team
+export async function getTeam(): Promise<TeamUser[]> {
+  return delay(TEAM.map((u) => ({ ...u })))
+}
+export async function addTeamUser(u: Omit<TeamUser, 'id'>): Promise<TeamUser> {
+  const row = { ...u, id: `u-${TEAM.length + 1}` }
+  TEAM.push(row)
+  return delay(row)
+}
+
+// Future: GET/PUT /api/settings (thresholds would also need api/alert_config.py to read them)
+export async function getSettings(): Promise<{ thresholds: AlertThresholds; notifications: NotificationSettings }> {
+  return delay({ thresholds: { ...THRESHOLDS }, notifications: { ...NOTIFICATIONS } })
+}
+export async function saveSettings(thresholds: AlertThresholds, notifications: NotificationSettings): Promise<void> {
+  Object.assign(THRESHOLDS, thresholds)
+  Object.assign(NOTIFICATIONS, notifications)
+  return delay(undefined)
+}
+
+// Future: GET /api/reports?months=6
+export async function getReports(): Promise<MonthReport[]> {
+  return delay(sampleReports())
+}
+
+/** Sample rating / jobs done for a (fictional) garage. Future: part of GET /api/garages */
+export const garageInfo = garageExtra
+
+/** Sample price range for the job an alert needs. */
+export const priceFor = (type: Alert['type']) => PRICE_ESTIMATE[type]
+
+/** Driver trip history and score trend (sample). Future: GET /api/drivers/{id}/trips */
+export const driverTrips = sampleTrips
+export const driverScoreTrend = sampleScoreTrend
+/** Tyre cost per km by brand (sample). Future: part of GET /api/reports */
+export const tyreCostByBrand = () => TYRE_COST_BY_BRAND
+
+/** Where "Book garage" goes: the alert's own page (with the 3 nearest garages), else the Garages page. */
+export function bookGarageHref(p: Prediction): string {
+  return p.id.startsWith('tp-') ? `/owner/alerts/${p.id.slice(3)}` : '/owner/garages'
 }

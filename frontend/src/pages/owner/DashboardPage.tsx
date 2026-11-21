@@ -20,6 +20,7 @@ import {
   getAlerts,
   predictionsFor,
   upcomingMaintenance,
+  bookGarageHref,
 } from '../../services/api'
 import { truckHealth } from '../../lib/status'
 import { Card, CardTitle, DemoTag, Kpi, PageHeader, RiskBadge, dueText, formatDate, rupees } from '../../components/owner/ui'
@@ -184,7 +185,7 @@ function AttentionRow({ p, truck }: { p: Prediction; truck: TruckSummary }) {
       </div>
       {p.needs_garage && (
         <Link
-          to={`/owner/alerts?truck=${truck.id}`}
+          to={bookGarageHref(p)}
           className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg bg-green-700 px-3 py-2 text-sm font-semibold text-white hover:bg-green-500"
         >
           <Wrench size={16} aria-hidden /> Book garage
@@ -197,7 +198,7 @@ function AttentionRow({ p, truck }: { p: Prediction; truck: TruckSummary }) {
 function ShipmentRow({ s, truck }: { s: Shipment; truck?: TruckSummary }) {
   return (
     <li className="flex items-center gap-3 py-2.5 text-sm">
-      <span className="w-20 shrink-0 font-heading text-xs font-bold">{s.id}</span>
+      <Link to={`/owner/shipments/${s.id}`} className="w-20 shrink-0 font-heading text-xs font-bold text-green-700 hover:text-green-500">{s.id}</Link>
       <span className="min-w-0 flex-1">
         <span className="font-semibold">
           {s.sender.city} → {s.receiver.city}

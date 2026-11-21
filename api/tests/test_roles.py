@@ -48,6 +48,8 @@ def test_other_roles_get_403(role, path):
 def test_other_roles_cannot_acknowledge_alerts(role):
     r = make_client(role).post("/api/alerts/00000000-0000-4000-8000-000000000099/ack", headers=AUTH)
     assert r.status_code == 403
+    r = make_client(role).post("/api/alerts/00000000-0000-4000-8000-000000000099/resolve", headers=AUTH)
+    assert r.status_code == 403
 
 
 def test_no_token_is_still_401_before_role_check():

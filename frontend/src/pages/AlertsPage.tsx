@@ -1,62 +1,78 @@
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { CheckCheck } from 'lucide-react'
+import { ArrowRight, CheckCheck, Clock, MapPin } from 'lucide-react'
 import { ackAlert, getAlerts, getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import { useLiveEvents, useThrottled } from '../services/live'
 import StatusBadge from '../components/StatusBadge'
-import GarageList from '../components/GarageList'
 import { ErrorBox, Loading } from '../components/PageState'
+import { PageHeader } from '../components/owner/ui'
 import { ALERT_TITLE, formatAlertValue } from '../lib/status'
-import { formatDateTimeIST, timeAgo } from '../lib/format'
+import { timeAgo } from '../lib/format'
 import { positionName } from '../lib/tyreLayout'
+import { placeName } from '../lib/route'
 import type { Alert, TruckSummary } from '../types'
 import { useLanguage } from '../i18n/LanguageProvider'
 
-type Filter = 'open' | 'closed'
-
-/**
- * Alerts page (spec section 6.4): list with open/closed filter, acknowledge button,
- * and the 3 nearest open garages for each open alert.
+/*
+ * Alert centre (docs/WEBSITE_SPEC.md section 2.6, stage W4).
+ * Tabs: Open / Acknowledged / Resolved. Each alert: severity, truck, parameter,
+ * plain-language message, time, location. Tap one for the detail page
+ * (countdown, what to do, garages, book slot, share with driver, mark resolved).
+ *
+ * ?truck=<id> shows one truck only (used by "Book garage" buttons).
  */
-export default function AlertsPage() {
-  const [filter, setFilter] = useState<Filter>('open')
-  const { t } = useLanguage()
-  const alertsQ = useApi(() => getAlerts(filter === 'open'), [filter])
-  // Trucks give us the reg no, tyre position and location for each alert.
-  const trucksQ = useApi(getTrucks, [])
 
-  // Live: a new or changed alert -> refresh the list (and truck positions for garages).
+type Tab = 'open' | 'acknowledged' | 'resolved'
+
+export function alertState(a: Alert): Tab {
+  if (a.resolved_at) return 'resolved'
+  if (a.acknowledged_at) return 'acknowledged'
+  return 'open'
+}
+
+export default function AlertsPage() {
+  const { t } = useLanguage()
+  const [params, setParams] = useSearchParams()
+  const tab = (['open', 'acknowledged', 'resolved'].includes(params.get('tab') ?? '') ? params.get('tab') : 'open') as Tab
+  const onlyTruck = params.get('truck')
+
+  const alertsQ = useApi(() => getAlerts(), [])
+  const trucksQ = useApi(getTrucks, [])
   const refresh = useThrottled(() => {
     alertsQ.reload()
     trucksQ.reload()
   }, 1000)
   useLiveEvents({ onAlert: refresh })
 
-  const trucksById = new Map((trucksQ.data ?? []).map((t) => [t.id, t]))
+  const trucksById = new Map((trucksQ.data ?? []).map((tr) => [tr.id, tr]))
+  const forTruck = (alertsQ.data ?? []).filter((a) => !onlyTruck || a.truck_id === onlyTruck)
+  const shown = forTruck.filter((a) => alertState(a) === tab)
+  const count = (x: Tab) => forTruck.filter((a) => alertState(a) === x).length
 
-  // ?truck=<id>: only this truck's alerts (from "Book garage" buttons).
-  const [params, setParams] = useSearchParams()
-  const onlyTruck = params.get('truck')
-  const shown = (alertsQ.data ?? []).filter((a) => !onlyTruck || a.truck_id === onlyTruck)
+  const setTab = (x: Tab) => {
+    const next = new URLSearchParams(params)
+    if (x === 'open') next.delete('tab')
+    else next.set('tab', x)
+    setParams(next, { replace: true })
+  }
 
   return (
     <>
-      <h1 className="text-2xl font-bold">{t('alerts.title')}</h1>
+      <PageHeader title={t('alerts.title')} />
 
-      {/* Open / Closed filter */}
-      <div className="mt-3 inline-flex rounded-lg bg-white p-1 ring-1 ring-gray-200" role="tablist">
-        {(['open', 'closed'] as Filter[]).map((f) => (
+      <div className="inline-flex flex-wrap rounded-lg bg-white p-1 ring-1 ring-gray-200" role="tablist">
+        {(['open', 'acknowledged', 'resolved'] as Tab[]).map((x) => (
           <button
-            key={f}
+            key={x}
             role="tab"
-            aria-selected={filter === f}
-            onClick={() => setFilter(f)}
-            className={`rounded-md px-4 py-1.5 text-sm font-semibold capitalize transition ${
-              filter === f ? 'bg-green-700 text-white' : 'text-navy-700 hover:bg-gray-100'
+            aria-selected={tab === x}
+            onClick={() => setTab(x)}
+            className={`rounded-md px-3 py-1.5 text-sm font-semibold transition sm:px-4 ${
+              tab === x ? 'bg-green-700 text-white' : 'text-navy-700 hover:bg-gray-100'
             }`}
           >
-            {t(f === 'open' ? 'alerts.open' : 'alerts.closed')}
+            {t(x === 'open' ? 'alerts.open' : x === 'acknowledged' ? 'alerts.acknowledged' : 'alerts.resolved')} ({count(x)})
           </button>
         ))}
       </div>
@@ -64,7 +80,14 @@ export default function AlertsPage() {
       {onlyTruck && (
         <p className="mt-3 flex flex-wrap items-center gap-2 text-sm">
           Showing only <span className="font-semibold">{trucksById.get(onlyTruck)?.reg_no ?? 'one truck'}</span>
-          <button onClick={() => setParams({}, { replace: true })} className="font-semibold text-green-700 underline hover:text-green-500">
+          <button
+            onClick={() => {
+              const next = new URLSearchParams(params)
+              next.delete('truck')
+              setParams(next, { replace: true })
+            }}
+            className="font-semibold text-green-700 underline hover:text-green-500"
+          >
             Show all trucks
           </button>
         </p>
@@ -75,14 +98,14 @@ export default function AlertsPage() {
         {alertsQ.error && <ErrorBox message={alertsQ.error} onRetry={alertsQ.reload} />}
         {alertsQ.data && shown.length === 0 && (
           <p className="rounded-xl bg-white p-6 text-center text-navy-700 ring-1 ring-gray-200">
-            {filter === 'open' ? 'No open alerts. All good.' : 'No closed alerts yet.'}
+            {tab === 'open' ? 'No open alerts. All good.' : `No ${tab} alerts.`}
           </p>
         )}
         {alertsQ.data && trucksQ.data && (
           <ul className="space-y-3">
             {shown.map((a) => (
               <li key={a.id}>
-                <AlertCard alert={a} truck={trucksById.get(a.truck_id)} onAcked={alertsQ.reload} />
+                <AlertCard alert={a} truck={trucksById.get(a.truck_id)} onChanged={alertsQ.reload} />
               </li>
             ))}
           </ul>
@@ -92,21 +115,21 @@ export default function AlertsPage() {
   )
 }
 
-function AlertCard({ alert, truck, onAcked }: { alert: Alert; truck?: TruckSummary; onAcked: () => void }) {
+function AlertCard({ alert, truck, onChanged }: { alert: Alert; truck?: TruckSummary; onChanged: () => void }) {
   const { t } = useLanguage()
   const [busy, setBusy] = useState(false)
-  const [ackError, setAckError] = useState<string | null>(null)
-  const tyre = truck?.tyres.find((t) => t.id === alert.tyre_id)
-  const isOpen = !alert.acknowledged_at
+  const [err, setErr] = useState<string | null>(null)
+  const tyre = truck?.tyres.find((ty) => ty.id === alert.tyre_id)
+  const state = alertState(alert)
 
   async function acknowledge() {
     setBusy(true)
-    setAckError(null)
+    setErr(null)
     try {
       await ackAlert(alert.id)
-      onAcked()
+      onChanged()
     } catch (e) {
-      setAckError(e instanceof Error ? e.message : 'Could not acknowledge')
+      setErr(e instanceof Error ? e.message : 'Could not acknowledge')
       setBusy(false)
     }
   }
@@ -114,48 +137,57 @@ function AlertCard({ alert, truck, onAcked }: { alert: Alert; truck?: TruckSumma
   return (
     <article
       className={`rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 ${
-        isOpen ? (alert.severity === 'critical' ? 'border-l-4 border-l-critical' : 'border-l-4 border-l-warning') : ''
+        state === 'open' ? (alert.severity === 'critical' ? 'border-l-4 border-l-critical' : 'border-l-4 border-l-warning') : ''
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 className="text-lg font-bold">{ALERT_TITLE[alert.type]}</h2>
-          <p className="text-sm text-navy-700">
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold">
+            {ALERT_TITLE[alert.type]}
+            {tyre && <span className="font-sans text-sm font-normal text-navy-700"> · {positionName(tyre.position)}</span>}
+          </h2>
+          <p className="text-sm">
             {truck ? (
               <Link to={`/owner/trucks/${truck.id}`} className="font-semibold text-green-700 hover:text-green-500">
                 {truck.reg_no}
               </Link>
             ) : (
               'Unknown truck'
-            )}
-            {tyre && ` · ${tyre.position} (${positionName(tyre.position)})`}
+            )}{' '}
+            · {formatAlertValue(alert.type, alert.value)}
           </p>
         </div>
         <StatusBadge status={alert.severity} />
       </div>
-
       <p className="mt-2 text-sm">{alert.message}</p>
-      <p className="mt-1 text-sm font-semibold">{formatAlertValue(alert.type, alert.value)}</p>
-      <p className="mt-1 text-xs text-navy-700">
-        Raised {timeAgo(alert.created_at)} ({formatDateTimeIST(alert.created_at)} IST)
-        {alert.acknowledged_at && ` · Acknowledged ${formatDateTimeIST(alert.acknowledged_at)} IST`}
+      <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-navy-700">
+        <span className="inline-flex items-center gap-1">
+          <Clock size={12} aria-hidden /> {timeAgo(alert.created_at)}
+        </span>
+        {truck?.lat != null && truck.lon != null && (
+          <span className="inline-flex items-center gap-1">
+            <MapPin size={12} aria-hidden /> {placeName([truck.lat, truck.lon])}
+          </span>
+        )}
       </p>
-
-      {isOpen && (
-        <>
-          <h3 className="mt-4 mb-2 text-sm font-bold uppercase tracking-wide text-navy-700">{t('alerts.garages')}</h3>
-          <GarageList lat={truck?.lat ?? null} lon={truck?.lon ?? null} />
-
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <Link
+          to={`/owner/alerts/${alert.id}`}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-500"
+        >
+          {state === 'resolved' ? 'Details' : 'Open: garages & actions'} <ArrowRight size={16} aria-hidden />
+        </Link>
+        {state === 'open' && (
           <button
             onClick={acknowledge}
             disabled={busy}
-            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-navy-900/20 px-4 py-2.5 font-semibold text-navy-900 transition hover:bg-green-50 disabled:opacity-50 sm:w-auto"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-navy-900/20 px-4 py-2.5 text-sm font-semibold hover:bg-green-50 disabled:opacity-50"
           >
-            <CheckCheck size={18} aria-hidden /> {busy ? 'Saving…' : t('alerts.acknowledge')}
+            <CheckCheck size={16} aria-hidden /> {busy ? 'Saving…' : t('alerts.acknowledge')}
           </button>
-          {ackError && <p className="mt-2 text-sm text-critical">{ackError}</p>}
-        </>
-      )}
+        )}
+      </div>
+      {err && <p className="mt-2 text-sm text-critical">{err}</p>}
     </article>
   )
 }

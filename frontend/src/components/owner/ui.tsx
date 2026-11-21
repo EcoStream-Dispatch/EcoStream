@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import { AlertTriangle, CheckCircle2, Info, OctagonAlert, type LucideIcon } from 'lucide-react'
+import { AlertTriangle, CalendarClock, CheckCircle2, Info, OctagonAlert, PackageOpen, Truck, type LucideIcon } from 'lucide-react'
 import type { PlanId } from '../../data/plans'
-import type { Risk } from '../../types'
+import type { Risk, ShipmentStatus } from '../../types'
 import { useLanguage } from '../../i18n/LanguageProvider'
 
 /*
@@ -147,4 +147,38 @@ export function dueText(date: string): string {
 
 export function formatDate(date: string): string {
   return new Date(`${date.slice(0, 10)}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+const SHIPMENT_STYLE: Record<ShipmentStatus, { label: string; icon: LucideIcon; cls: string }> = {
+  scheduled: { label: 'Scheduled', icon: CalendarClock, cls: 'bg-gray-100 text-navy-700 ring-gray-300' },
+  loading: { label: 'Loading', icon: PackageOpen, cls: 'bg-gray-100 text-navy-700 ring-gray-300' },
+  in_transit: { label: 'In transit', icon: Truck, cls: 'bg-green-50 text-green-700 ring-green-500/30' },
+  delivered: { label: 'Delivered', icon: CheckCircle2, cls: 'bg-navy-900 text-white ring-navy-900' },
+  delayed: { label: 'Delayed', icon: AlertTriangle, cls: 'bg-amber-50 text-amber-800 ring-warning/40' },
+}
+
+export const SHIPMENT_STATUSES = Object.keys(SHIPMENT_STYLE) as ShipmentStatus[]
+export const shipmentLabel = (s: ShipmentStatus) => SHIPMENT_STYLE[s].label
+
+/** Shipment status pill with icon + word. */
+export function ShipmentBadge({ status }: { status: ShipmentStatus }) {
+  const { label, icon: Icon, cls } = SHIPMENT_STYLE[status]
+  return (
+    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${cls}`}>
+      <Icon size={14} aria-hidden /> {label}
+    </span>
+  )
+}
+
+/** "7:30 pm" (IST) or "21 Nov, 7:30 pm" when not today. */
+export function shortTime(iso: string | null): string {
+  if (!iso) return '-'
+  const d = new Date(iso)
+  const sameDay = d.toDateString() === new Date().toDateString()
+  return d.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: 'numeric',
+    minute: '2-digit',
+    ...(sameDay ? {} : { day: 'numeric', month: 'short' }),
+  })
 }

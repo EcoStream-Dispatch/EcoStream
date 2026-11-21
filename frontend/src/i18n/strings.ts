@@ -84,6 +84,12 @@ export const en = {
   'alerts.acknowledge': 'Acknowledge',
   'alerts.garages': 'Nearest garages open now',
   'alerts.call': 'Call',
+  'alerts.acknowledged': 'Acknowledged',
+  'alerts.resolved': 'Resolved',
+  'alerts.resolve': 'Mark resolved',
+  'alerts.share': 'Share with driver',
+  'alerts.book': 'Book slot',
+  'alerts.whatToDo': 'What to do',
 
   // Driver and shipper portals (filled in at stages W5 and W6)
   'portal.driver': 'Driver portal',
@@ -155,6 +161,12 @@ const ta: Dictionary = {
   'alerts.acknowledge': 'ஏற்றுக்கொள்',
   'alerts.garages': 'இப்போது திறந்திருக்கும் அருகிலுள்ள கேரேஜ்கள்',
   'alerts.call': 'அழை',
+  'alerts.acknowledged': 'பார்த்தவை',
+  'alerts.resolved': 'சரிசெய்யப்பட்டவை',
+  'alerts.resolve': 'சரிசெய்யப்பட்டது எனக் குறி',
+  'alerts.share': 'ஓட்டுநருடன் பகிர்',
+  'alerts.book': 'நேரம் பதிவு செய்',
+  'alerts.whatToDo': 'என்ன செய்ய வேண்டும்',
   'common.demoData': 'டெமோ தரவு',
 }
 
@@ -212,6 +224,12 @@ const hi: Dictionary = {
   'alerts.acknowledge': 'स्वीकार करें',
   'alerts.garages': 'अभी खुले नज़दीकी गैराज',
   'alerts.call': 'कॉल करें',
+  'alerts.acknowledged': 'देखे गए',
+  'alerts.resolved': 'हल हो गए',
+  'alerts.resolve': 'हल हुआ मार्क करें',
+  'alerts.share': 'ड्राइवर को भेजें',
+  'alerts.book': 'स्लॉट बुक करें',
+  'alerts.whatToDo': 'क्या करें',
   'common.demoData': 'डेमो डेटा',
 }
 

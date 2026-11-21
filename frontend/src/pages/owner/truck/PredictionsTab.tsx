@@ -1,3 +1,4 @@
+import { bookGarageHref } from '../../../services/api'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, Wrench } from 'lucide-react'
 import { RiskBadge, rupees } from '../../../components/owner/ui'
@@ -9,7 +10,7 @@ import type { Prediction, TruckSummary } from '../../../types'
  * Tyre predictions are worked out from the live alerts (e.g. leak rate -> "unsafe in ~6 h");
  * the others, and all costs, are sample data.
  */
-export default function PredictionsTab({ truck, predictions }: { truck: TruckSummary; predictions: Prediction[] }) {
+export default function PredictionsTab({ predictions }: { truck?: TruckSummary; predictions: Prediction[] }) {
   if (predictions.length === 0)
     return (
       <p className="flex items-center gap-2 rounded-xl bg-white p-4 text-green-700 ring-1 ring-gray-200">
@@ -43,7 +44,7 @@ export default function PredictionsTab({ truck, predictions }: { truck: TruckSum
           </dl>
           {p.needs_garage && (
             <Link
-              to={`/owner/alerts?truck=${truck.id}`}
+              to={bookGarageHref(p)}
               className="mt-4 inline-flex items-center justify-center gap-2 rounded-lg bg-green-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-500 sm:self-start"
             >
               <Wrench size={16} aria-hidden /> Book garage
