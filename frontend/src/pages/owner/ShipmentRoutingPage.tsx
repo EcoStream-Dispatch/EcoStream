@@ -268,7 +268,7 @@ export default function ShipmentRoutingPage() {
             <button onClick={copyLink} className="mt-2 inline-flex items-center gap-2 rounded-lg border border-navy-900/20 px-3 py-2 text-sm font-semibold hover:bg-green-50">
               <Copy size={16} aria-hidden /> {copied ? 'Copied' : 'Copy link'}
             </button>
-            <p className="mt-1 text-xs text-navy-700">The shipper tracking page is built in stage W6.</p>
+            <p className="mt-1 text-xs text-navy-700">The shipper opens it after logging in as a shipper.</p>
           </Card>
         </div>
       </div>

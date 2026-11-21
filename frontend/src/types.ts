@@ -331,3 +331,21 @@ export interface MonthReport {
   fuel_km_per_l: number
   idle_min_per_day: number
 }
+
+// ---------- Shipper portal (website stage W6) ----------
+
+export interface ShipmentRequest {
+  id: string
+  pickup_city: string
+  pickup_address: string
+  drop_city: string
+  drop_address: string
+  goods: string
+  weight_t: number
+  date: string
+  status: 'waiting' | 'accepted'
+  created_at: string
+}
+
+/** What a shipper is shown about the truck: plain words, no technical alert details. */
+export type TruckCondition = 'good' | 'minor' | 'problem' | 'no_signal'

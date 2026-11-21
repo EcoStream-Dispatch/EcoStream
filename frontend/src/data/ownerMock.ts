@@ -12,6 +12,7 @@
  * companies are "Sample ..." on the Chennai - Krishnagiri - Salem - Namakkal corridor.
  */
 import type {
+  ShipmentRequest,
   AlertThresholds,
   AlertType,
   Booking,
@@ -421,3 +422,17 @@ export function sampleTrips(driverId: string) {
 export function sampleScoreTrend(score: number): number[] {
   return Array.from({ length: 8 }, (_, i) => Math.max(40, Math.min(99, score - 8 + i + ((i * 5) % 3))))
 }
+
+// ---------------------------------------------------------------------
+// Stage W6: shipper portal (the demo shipper is "Sample Textiles (Chennai)")
+// ---------------------------------------------------------------------
+
+export const DEMO_SHIPPER_NAME = PLACES.chennai.name
+
+/** Freight charges for invoices (SAMPLE amounts, ₹). */
+export const FREIGHT: Record<string, number> = { 'SHP-0998': 18_500, 'SHP-1001': 14_200, 'SHP-1005': 31_000 }
+
+/** Shipment requests made in this browser tab. */
+export const SHIPMENT_REQUESTS: ShipmentRequest[] = [
+  { id: 'REQ-501', pickup_city: 'Chennai', pickup_address: 'Plot 12, Sample Industrial Estate, Ambattur', drop_city: 'Salem', drop_address: '3 Sample Street, Suramangalam', goods: 'Cotton yarn', weight_t: 8, date: dateIn(3), status: 'waiting', created_at: isoIn(-5 * 60 * 60e3) },
+]

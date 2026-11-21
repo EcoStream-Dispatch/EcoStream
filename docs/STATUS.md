@@ -103,3 +103,13 @@ against real Supabase Postgres, Auth or Realtime**. What was tested instead:
 | Full-screen alert | One icon, one sentence in Tamil + English (+ Hindi when Hindi is chosen), Play voice (browser text-to-speech: Tamil / Hindi voice if the phone has one, otherwise English with a note), Navigate to garage (opens Google Maps directions to the nearest open sample garage), Call owner (sample number). Dark navy night mode, automatic 7 pm-6 am, with a switch. **Tamil/Hindi sentences are machine translations: need a native speaker's review** (TODO in `frontend/src/i18n/alertSentences.ts`). **Not tested: the actual sound on a real Android phone.** |
 | SOS | Press and hold 2 seconds (a short tap does nothing, so no accidental SOS). Uses phone GPS if allowed, else the truck's last position. **Demo: nothing is sent.** "Call 112" (India emergency number) and "Call owner" buttons. |
 | My trips | Driving score (0-100) with an 8-week trend, simple tips, past trips. Sample data. |
+
+### W6 shipper portal: done, 21 Nov 2026
+| Item | Status |
+|---|---|
+| Data | **All sample data.** The demo shipper is "Sample Textiles (Chennai)" with 4 shipments (in transit, chilled in transit, scheduled, delivered). Shippers can't read the owner's trucks (RLS) and there is no shipments table yet. Needs: shipments + shipper accounts in the database and a shipper API. Labelled "Demo data". |
+| My shipments + Request a shipment | **Built.** Status, ETA, truck condition; requests show "Waiting for transporter". Requests last only for the browser tab. |
+| Live tracking | **Built.** Map with the truck and route, ETA, km left, **truck condition in plain words** (Good / Minor issue, being handled / Problem, transporter is on it / No signal), cargo temperature + 24 h trend for cold-chain loads, driver and truck with Call driver, timeline. Shippers do **not** see the owner's technical alerts. |
+| Owner's share-tracking link | **Works.** Opening it logged out goes to login with "Shipper" preselected, then straight to the tracking page. |
+| Delivery & invoices | **Built.** Proof-of-delivery photo + signature **placeholders**, and a **sample invoice** (clearly marked "not a real bill", no tax lines) that prints / saves as PDF. |
+| Checked | All shipper pages at 360 px and 1440 px: no sideways scroll, no console errors. Shippers can't open owner or driver pages. |

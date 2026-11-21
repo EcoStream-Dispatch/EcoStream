@@ -121,6 +121,13 @@ export const en = {
   'driver.alertNow': 'Truck alert',
   'driver.allGood': 'All tyres OK. Safe journey!',
 
+  // Shipper portal (stage W6)
+  'shipper.shipments': 'My shipments',
+  'shipper.request': 'Request a shipment',
+  'shipper.deliveries': 'Delivery & invoices',
+  'shipper.track': 'Track',
+  'shipper.condition': 'Truck condition',
+
   // Shared
   'common.demoData': 'Demo data',
   'common.demoDataHint': 'This screen shows made-up data, not real trucks',
@@ -184,6 +191,11 @@ const ta: Dictionary = {
   'driver.score': 'என் ஓட்டுநர் மதிப்பெண்',
   'driver.alertNow': 'லாரி எச்சரிக்கை',
   'driver.allGood': 'எல்லா டயர்களும் சரி. பாதுகாப்பான பயணம்!',
+  'shipper.shipments': 'என் சரக்குகள்',
+  'shipper.request': 'சரக்கு அனுப்ப கோரிக்கை',
+  'shipper.deliveries': 'டெலிவரி & பில்கள்',
+  'shipper.track': 'கண்காணி',
+  'shipper.condition': 'லாரி நிலை',
   'status.ok': 'சரி',
   'status.warning': 'எச்சரிக்கை',
   'status.critical': 'அபாயம்',
@@ -270,6 +282,11 @@ const hi: Dictionary = {
   'driver.score': 'मेरा ड्राइविंग स्कोर',
   'driver.alertNow': 'ट्रक अलर्ट',
   'driver.allGood': 'सभी टायर ठीक हैं। शुभ यात्रा!',
+  'shipper.shipments': 'मेरे शिपमेंट',
+  'shipper.request': 'शिपमेंट का अनुरोध',
+  'shipper.deliveries': 'डिलीवरी और बिल',
+  'shipper.track': 'ट्रैक करें',
+  'shipper.condition': 'ट्रक की हालत',
   'status.ok': 'ठीक',
   'status.warning': 'चेतावनी',
   'status.critical': 'गंभीर',

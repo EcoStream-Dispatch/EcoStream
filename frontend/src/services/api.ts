@@ -12,8 +12,11 @@ import type {
   AlertThresholds,
   Booking,
   Driver,
+  ShipmentRequest,
+  TruckCondition,
   MonthReport,
   NewShipment,
+  ParamValue,
   NotificationSettings,
   ShipmentEvent,
   TeamUser,
@@ -41,6 +44,9 @@ import {
   DRIVERS,
   NOTIFICATIONS,
   PRICE_ESTIMATE,
+  DEMO_SHIPPER_NAME,
+  FREIGHT,
+  SHIPMENT_REQUESTS,
   TEAM,
   THRESHOLDS,
   TYRE_COST_BY_BRAND,
@@ -632,4 +638,71 @@ const DRIVER_ALERT_RANK: Record<Alert['type'], number> = {
 }
 export function worstAlertForDriver(alerts: Alert[]): Alert | undefined {
   return [...alerts].sort((a, b) => Number(b.severity === 'critical') - Number(a.severity === 'critical') || DRIVER_ALERT_RANK[a.type] - DRIVER_ALERT_RANK[b.type])[0]
+}
+
+/* ------------------------------------------------------------------
+ * Shipper portal (stage W6). ALWAYS sample data for now: the demo shipper is
+ * "Sample Textiles (Chennai)". Shippers can't read the owner's trucks (RLS) and the
+ * database has no shipments table yet.
+ * Future: shipments + shipper_accounts tables and GET /api/shipper/shipments.
+ * ------------------------------------------------------------------ */
+
+export const SHIPPER_DATA_MOCKED = true
+/** The demo shipper's company name. */
+export const DEMO_SHIPPER = DEMO_SHIPPER_NAME
+
+export interface ShipperShipment {
+  shipment: Shipment
+  truck: TruckSummary | null
+  driver: Driver | null
+  condition: TruckCondition
+  /** Cold-chain cargo temperature, when the truck has the cold-chain add-on */
+  cargoTemp: ParamValue | null
+  freight: number | null
+}
+
+/** Plain-words truck condition for shippers (no alert details). */
+export function truckCondition(truck: TruckSummary | null): TruckCondition {
+  if (!truck) return 'no_signal'
+  const h = truckHealth(truck)
+  return h === 'ok' ? 'good' : h === 'warning' ? 'minor' : h === 'critical' ? 'problem' : 'no_signal'
+}
+
+function shipperView(s: Shipment, trucks: TruckSummary[]): ShipperShipment {
+  const truck = trucks.find((t) => t.reg_no === s.truck_id) ?? null
+  const seed = truck ? PROFILES[truck.reg_no] : undefined
+  const cold = !!seed?.add_ons.includes('cold_chain') && /chill|2-8/i.test(s.goods)
+  const cargoTemp = cold && truck ? (sampleParams(truck.reg_no, { driverName: null, odometerKm: 0 }).find((v) => v.key === 'cargo_temp_humidity') ?? null) : null
+  return {
+    shipment: { ...s, truck_id: truck?.id ?? null },
+    truck,
+    driver: DRIVERS.find((d) => d.id === s.driver_id) ?? null,
+    condition: truckCondition(truck),
+    cargoTemp,
+    freight: FREIGHT[s.id] ?? null,
+  }
+}
+
+// Future: GET /api/shipper/shipments
+export async function getShipperShipments(): Promise<{ shipper: string; items: ShipperShipment[]; requests: ShipmentRequest[] }> {
+  const trucks = mockGetTrucks()
+  const mine = SHIPMENTS.filter((s) => s.sender.name === DEMO_SHIPPER_NAME || s.receiver.name === DEMO_SHIPPER_NAME)
+  return delay({
+    shipper: DEMO_SHIPPER_NAME,
+    items: mine.map((s) => shipperView(s, trucks)).sort((a, b) => b.shipment.pickup_at.localeCompare(a.shipment.pickup_at)),
+    requests: [...SHIPMENT_REQUESTS].sort((a, b) => b.created_at.localeCompare(a.created_at)),
+  })
+}
+
+// Future: GET /api/shipper/shipments/{id}  (also used by the owner's share-tracking link)
+export async function getShipperShipment(id: string): Promise<ShipperShipment | null> {
+  const s = SHIPMENTS.find((x) => x.id === id)
+  return delay(s ? shipperView(s, mockGetTrucks()) : null)
+}
+
+// Future: POST /api/shipper/requests
+export async function requestShipment(input: Omit<ShipmentRequest, 'id' | 'status' | 'created_at'>): Promise<ShipmentRequest> {
+  const row: ShipmentRequest = { ...input, id: `REQ-${501 + SHIPMENT_REQUESTS.length}`, status: 'waiting', created_at: new Date().toISOString() }
+  SHIPMENT_REQUESTS.push(row)
+  return delay(row)
 }

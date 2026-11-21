@@ -18,7 +18,7 @@ export default function PortalShell({ title, home, children }: { title: StringKe
   const { t } = useLanguage()
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white">
+      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white print:hidden">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 px-4 py-2">
           <Link to={home} className="flex min-w-0 items-center gap-2">
             <img src={asset('logo-mark.png')} alt="" className="h-9 w-9 shrink-0 object-contain" />

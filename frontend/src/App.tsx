@@ -7,7 +7,11 @@ import GaragesJoinPage from './pages/GaragesJoinPage'
 import AboutPage from './pages/AboutPage'
 import AppLayout from './components/AppLayout'
 import RequireRole from './auth/RequireRole'
-import RolePortalPage from './pages/RolePortalPage'
+import ShipperLayout from './pages/shipper/ShipperLayout'
+import MyShipmentsPage from './pages/shipper/MyShipmentsPage'
+import RequestShipmentPage from './pages/shipper/RequestShipmentPage'
+import TrackShipmentPage from './pages/shipper/TrackShipmentPage'
+import DeliveriesPage, { InvoicePage } from './pages/shipper/DeliveriesPage'
 import DriverLayout, { DriverDataProvider } from './pages/driver/DriverLayout'
 import MyTripPage from './pages/driver/MyTripPage'
 import TruckCockpitPage from './pages/driver/TruckCockpitPage'
@@ -115,14 +119,20 @@ export default function App() {
         </Route>
         <Route path="/driver/alert/:id" element={<DriverAlertPage />} />
       </Route>
+      {/* Shipper portal (stage W6) */}
       <Route
-        path="/shipper"
         element={
           <RequireRole role="shipper">
-            <RolePortalPage role="shipper" />
+            <ShipperLayout />
           </RequireRole>
         }
-      />
+      >
+        <Route path="/shipper" element={<MyShipmentsPage />} />
+        <Route path="/shipper/request" element={<RequestShipmentPage />} />
+        <Route path="/shipper/track/:id" element={<TrackShipmentPage />} />
+        <Route path="/shipper/deliveries" element={<DeliveriesPage />} />
+        <Route path="/shipper/invoices/:id" element={<InvoicePage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
