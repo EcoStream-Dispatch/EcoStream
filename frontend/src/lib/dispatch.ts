@@ -11,6 +11,8 @@ import type { LatLon } from './route'
  *   - Not suggested: truck Critical, too small for the weight, busy at pickup time,
  *     or the goods need cold chain and the truck has no cold-chain add-on.
  *   - Ranked by: health (OK first), how well the size fits, distance to the pickup.
+ *     Points: OK +30, Warning +10, size fit up to +20, minus 1 per 10 km. So health is
+ *     worth about 200 km: a nearby Warning truck beats an OK truck 300 km away.
  *
  * Payload limits per wheel layout are SAMPLE values for the demo, not legal limits.
  */

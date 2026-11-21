@@ -1,6 +1,62 @@
-# Prototype status: acceptance criteria (spec section 1)
+# EcoStream status
 
-Last checked: 20 Nov 2026, end of Stage 6. Written honestly. "Not tested" means not tested.
+Last checked: 21 Nov 2026, end of website stage W7. Written honestly:
+**built** = the screen exists and works in a browser; **sample data** = it runs on made-up data
+because the backend for it doesn't exist yet; **not tested** = not tested.
+
+## Summary (read this first)
+
+### The big picture
+- **The whole website is built**: public site, one login with 3 roles, Owner portal (11 sections),
+  Driver portal, Shipper portal. Every page was opened at 360 px and 1440 px:
+  [all screenshots](screenshots/README.md).
+- **Real data only for tyres and alerts.** Tyre readings, tyre status, alerts (open / acknowledged /
+  resolved), garages "nearest open" and login roles have a real backend (FastAPI + Supabase).
+  **Everything else is sample data**, labelled "Demo data" on the page: engine / brakes / cargo values,
+  plans per truck, drivers, shipments and routing, predictions (except tyre ones), maintenance,
+  bookings, reports, settings, and the whole driver and shipper portals.
+- **No real Supabase project yet**, so nothing has run against real Supabase Postgres, Auth or
+  Realtime. Stand-ins used instead are listed below.
+
+### By area
+| Area | Built | Data | Tested how | Not tested |
+|---|---|---|---|---|
+| Public site (Home, Plans, For garages, About/Contact) | Yes | Content from the spec. Forms: **mock, nothing sent** | Browser, 360 + 1440 px | Real form backend (none) |
+| Login + roles (owner / driver / shipper) | Yes, email + password | `profiles` table with role, RLS | RLS 34/34 in PGlite; browser against a stand-in for Supabase Auth | Real Supabase Auth; phone OTP (needs a paid SMS provider) |
+| Owner: tyres, alerts, garages | Yes | **Real API** (tyre readings, alerts, resolve, nearest garages) | 79 API tests; browser with demo data | Real Supabase; live updates (Realtime) |
+| Owner: everything else | Yes | **Sample data** | Browser flows (book garage, create shipment, upgrade plan) | Backend for all of it (not built) |
+| Driver portal | Yes | **Sample data** (one demo driver) | Browser flows, SOS hold, Tamil labels | Voice on a real Android phone; real SOS sending; driver-to-truck link in the database |
+| Shipper portal | Yes | **Sample data** (one demo shipper) | Browser flows, share-link login | Shipments backend; real invoices |
+| Tamil / Hindi | Menus, login, alerts, status words, driver alert sentences | Machine translation | Shown in the browser | **Native-speaker review (TODO)** |
+
+### Tests (all run on 21 Nov 2026)
+| Suite | Command | Result |
+|---|---|---|
+| API (alert logic, ingest, owner API, roles, resolve) | `cd api && .venv/bin/pytest -q` | **79 passed** |
+| Database security (RLS) in PGlite | `cd supabase/tests && npm test` | **34/34 PASS** |
+| Frontend logic (routes, dispatch, plans, wheel layouts, leak rate, offline) | `cd frontend && npm test` | **14 passed** |
+| Every page at 360 + 1440 px (Playwright) | `cd frontend && npm run check-pages` (dev server running) | **96/96 ok**: no sideways scroll, nothing sticking out, no console errors |
+| Typecheck + production build | `cd frontend && npm run build` | passes |
+
+### Open items and known risks
+- **`docs/PLANS_SPEC.md` is missing.** Plan comparison and locked cards use 50 parameters from
+  WEBSITE_SPEC with our own provisional keys, not "the 55 keys".
+- **Sample numbers that look real:** ₹ saved (= ₹25,000 per avoided breakdown, an assumption),
+  garage ratings and prices, payload limits per wheel layout, add-on prices ("on request"),
+  map warnings (ghat / no-signal / bad-road stretches are sample markings), ETA at 45 km/h,
+  routes along corridor towns (no road-routing service).
+- **Demo changes don't last:** new shipments, bookings, plan changes and settings live only in
+  the browser tab.
+- **Map tiles:** free OpenStreetMap tiles are fine for a prototype only (OSM usage policy).
+- **Dependencies (npm audit, 21 Nov 2026):** upgraded react-router-dom to 6.30.6 and postcss to 8.5.32.
+  Left: react-router moderate advisory (fix needs v7; affects links built from user input, which this
+  app doesn't have) and Vite / esbuild advisories that affect only the local dev server
+  (fix needs a Vite major upgrade). Don't expose `npm run dev` to the internet.
+- **Phase 1b acceptance criteria below** still need the real Supabase project to finish.
+
+---
+
+# Phase 1b acceptance criteria (spec section 1)
 
 ## Important: no real Supabase project yet
 The Supabase project hasn't been created yet (`docs/SUPABASE_SETUP.md`), so **nothing has run

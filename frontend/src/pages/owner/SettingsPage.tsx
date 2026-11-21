@@ -69,14 +69,14 @@ function TeamCard({ team, onAdded }: { team: TeamUser[]; onAdded: () => void }) 
       <CardTitle>Users and roles</CardTitle>
       <ul className="divide-y divide-gray-100">
         {team.map((u) => (
-          <li key={u.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+          <li key={u.id} className="flex flex-col gap-1 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <span className="min-w-0">
               <span className="block truncate font-semibold">{u.name}</span>
               <span className="block truncate text-xs text-navy-700">{u.email}</span>
             </span>
-            <span className="shrink-0 text-right">
+            <span className="shrink-0 sm:text-right">
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold capitalize">{u.role}</span>
-              <span className="mt-0.5 block text-[11px] text-navy-700">{ROLE_HELP[u.role]}</span>
+              <span className="ml-2 text-[11px] text-navy-700 sm:mt-0.5 sm:ml-0 sm:block">{ROLE_HELP[u.role]}</span>
             </span>
           </li>
         ))}
