@@ -44,7 +44,7 @@ function LiveDot() {
 }
 
 function Shell() {
-  const { session, signOut } = useAuth()
+  const { session, role, signOut } = useAuth()
   const { t } = useLanguage()
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
@@ -80,14 +80,15 @@ function Shell() {
                 </NavLink>
               ))}
             </nav>
-            {session && (
+            {role && (
               <button
                 onClick={signOut}
                 className="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-semibold text-navy-700 hover:bg-gray-100"
-                title={`Logged in as ${session.user.email ?? ''}`}
+                title={session?.user.email ? `${t('portal.signedInAs')} ${session.user.email}` : undefined}
               >
                 <LogOut size={18} aria-hidden />
                 <span className="hidden sm:inline">{t('nav.logout')}</span>
+                <span className="sr-only sm:hidden">{t('nav.logout')}</span>
               </button>
             )}
           </div>

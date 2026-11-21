@@ -6,7 +6,8 @@ import PlansPage from './pages/PlansPage'
 import GaragesJoinPage from './pages/GaragesJoinPage'
 import AboutPage from './pages/AboutPage'
 import AppLayout from './components/AppLayout'
-import RequireAuth from './auth/RequireAuth'
+import RequireRole from './auth/RequireRole'
+import RolePortalPage from './pages/RolePortalPage'
 import FleetPage from './pages/FleetPage'
 import AlertsPage from './pages/AlertsPage'
 import { Loading } from './components/PageState'
@@ -17,8 +18,9 @@ const TruckPage = lazy(() => import('./pages/TruckPage'))
 
 /**
  * All routes live here.
- * Public: home, plans, for garages, about/contact, login. Owner pages need a login (RequireAuth; skipped in demo mode)
- * and sit inside AppLayout (top bar, tab bar, live connection).
+ * Public: home, plans, for garages, about/contact, login.
+ * Each portal is guarded by RequireRole: logged out -> /login, wrong role -> own portal.
+ * Owner pages sit inside AppLayout (top bar, tab bar, live connection).
  */
 export default function App() {
   return (
@@ -30,9 +32,9 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route
         element={
-          <RequireAuth>
+          <RequireRole role="owner">
             <AppLayout />
-          </RequireAuth>
+          </RequireRole>
         }
       >
         <Route path="/fleet" element={<FleetPage />} />
@@ -46,6 +48,22 @@ export default function App() {
         />
         <Route path="/alerts" element={<AlertsPage />} />
       </Route>
+      <Route
+        path="/driver"
+        element={
+          <RequireRole role="driver">
+            <RolePortalPage role="driver" />
+          </RequireRole>
+        }
+      />
+      <Route
+        path="/shipper"
+        element={
+          <RequireRole role="shipper">
+            <RolePortalPage role="shipper" />
+          </RequireRole>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

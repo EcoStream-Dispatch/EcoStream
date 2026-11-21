@@ -45,7 +45,7 @@ const read = (p) => fs.readFileSync(dir + '/' + p, 'utf8')
   await db.exec(read('seed.sql'))
   await db.exec(read('seed.sql')) // run twice: must be re-runnable
   const counts = await db.query(`select (select count(*) from trucks) trucks, (select count(*) from tyres) tyres,
-    (select count(*) from devices) devices, (select count(*) from garages) garages, (select count(*) from fleet_owners) owners`)
+    (select count(*) from devices) devices, (select count(*) from garages) garages, (select count(*) from fleet_owners) owners, (select count(*) from profiles) profiles`)
   console.log('after seeding twice:', counts.rows[0])
   // Impossible-value check constraints
   try { await db.exec(`insert into readings (tyre_id, ts, pressure_kpa, temp_c, corrected_kpa) select id, now(), 1600, 30, 1 from tyres limit 1`); console.log('UNEXPECTED: 1600 kPa accepted') }
@@ -61,8 +61,8 @@ const read = (p) => fs.readFileSync(dir + '/' + p, 'utf8')
   const res = await db.exec(read('tests/rls_check.sql'))
   const rows = res[res.length - 1].rows
   console.table(rows)
-  console.log('test data left behind (expect 2 trucks, 1 owner):',
-    (await db.query(`select (select count(*) from trucks) t, (select count(*) from fleet_owners) o, (select count(*) from auth.users) u`)).rows[0])
+  console.log('test data left behind (expect 2 trucks, 1 owner, 1 profile, 1 user):',
+    (await db.query(`select (select count(*) from trucks) t, (select count(*) from fleet_owners) o, (select count(*) from profiles) p, (select count(*) from auth.users) u`)).rows[0])
   const ok = rows.every((r) => r.result === 'PASS')
   console.log(ok ? 'ALL RLS CHECKS PASS' : 'SOME RLS CHECKS FAILED')
   if (!ok) process.exit(1)

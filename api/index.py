@@ -17,7 +17,7 @@ This file only handles HTTP (parsing, auth, status codes). The real work is in:
 import os
 import sys
 from datetime import datetime, timedelta, timezone
-from typing import Annotated, Optional
+from typing import Annotated, Callable, Optional
 from uuid import UUID
 
 # Make sibling modules importable when Vercel runs this file from another folder.
@@ -64,15 +64,33 @@ class Owner(BaseModel):
     token: str
 
 
-def get_owner(authorization: Annotated[Optional[str], Header()] = None) -> Owner:
-    """Checks the 'Authorization: Bearer <Supabase access token>' header."""
+def get_user(authorization: Annotated[Optional[str], Header()] = None) -> Owner:
+    """Checks the 'Authorization: Bearer <Supabase access token>' header. Any role."""
     token = bearer_token(authorization)
     if not token:
         raise HTTPException(401, "Log in first (missing Authorization: Bearer token)")
-    owner_id = db.owner_id_from_token(token)
-    if not owner_id:
+    user_id = db.owner_id_from_token(token)
+    if not user_id:
         raise HTTPException(401, "Login expired or invalid. Please log in again.")
-    return Owner(id=owner_id, token=token)
+    return Owner(id=user_id, token=token)
+
+
+def get_role_lookup() -> Callable[[str], Optional[str]]:
+    """How to find a user's role (public.profiles). Tests replace this."""
+    return db.role_of
+
+
+def get_owner(
+    user: Annotated[Owner, Depends(get_user)],
+    role_of: Annotated[Callable[[str], Optional[str]], Depends(get_role_lookup)],
+) -> Owner:
+    """Owner endpoints: a valid login AND role 'owner' (stage W2).
+    Row-level security already hides other owners' trucks; this also stops driver
+    and shipper logins from using the owner API at all."""
+    role = role_of(user.id)
+    if role != "owner":
+        raise HTTPException(403, "This account is not an owner account.")
+    return user
 
 
 def get_owner_repo(owner: Annotated[Owner, Depends(get_owner)]) -> db.OwnerRepo:

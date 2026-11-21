@@ -65,6 +65,12 @@ def owner_id_from_token(token: str) -> Optional[str]:
     return response.user.id if response and response.user else None
 
 
+def role_of(user_id: str) -> Optional[str]:
+    """The user's portal role from public.profiles: 'owner', 'driver', 'shipper', or None (no profile yet)."""
+    rows = service_client().table("profiles").select("role").eq("id", user_id).limit(1).execute().data
+    return rows[0]["role"] if rows else None
+
+
 # ---------------------------------------------------------------------------
 # Ingest (service role)
 # ---------------------------------------------------------------------------

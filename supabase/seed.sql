@@ -40,6 +40,21 @@ begin
   values (owner, 'Demo Owner', null, 'Demo Transport (sample)')
   on conflict (id) do update set name = excluded.name, company = excluded.company;
 
+  -- Login role (stage W2): the demo owner opens the owner portal.
+  insert into public.profiles (id, role, full_name)
+  values (owner, 'owner', 'Demo Owner')
+  on conflict (id) do update set role = excluded.role, full_name = excluded.full_name;
+
+  -- Optional demo driver / shipper logins (stage W2). Create them first in
+  -- Authentication -> Users if you want to try those portals; skipped if missing.
+  insert into public.profiles (id, role, full_name)
+  select u.id, v.role, v.full_name
+  from auth.users u
+  join (values ('demo.driver@example.com', 'driver', 'Demo Driver (sample)'),
+               ('demo.shipper@example.com', 'shipper', 'Demo Shipper (sample)')) as v(email, role, full_name)
+    on u.email = v.email
+  on conflict (id) do update set role = excluded.role, full_name = excluded.full_name;
+
   -- Trucks
   insert into public.trucks (id, owner_id, reg_no, make, model, axle_config) values
     (t1, owner, 'TN 99 ZZ 0001', 'Tata', 'Signa 4825.T', '6W'),
