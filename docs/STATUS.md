@@ -92,3 +92,14 @@ against real Supabase Postgres, Auth or Realtime**. What was tested instead:
 | Flows checked in a browser | Dashboard → Book garage → alert → slot → "Garage booked" → My bookings. Shipments → Create shipment → live routing. Locked card → Plan & Billing → Upgrade → cards unlocked (21 → 0 locked). Mark resolved → moves to Resolved. No console errors. |
 | Layout | Every owner page at 360 px and 1440 px: no sideways scroll, nothing sticking out. |
 | Tests | API 79 passed. RLS check 34/34 PASS (PGlite). |
+
+### W5 driver portal: done, 21 Nov 2026
+| Item | Status |
+|---|---|
+| Data | **All sample data** (Murugan K. on TN 99 ZZ 0001, trip SHP-1001). Drivers can't read the owner's trucks (RLS) and there is no driver-to-truck link in the database yet. Needs: a driver_assignments table + a driver API. Labelled "Demo data" on every page. |
+| Layout | Mobile first: big text and buttons, bottom tabs (My trip, Truck health, SOS, My trips), alert banner at the top (most dangerous alert first). Tested at 360 px and 1440 px: no sideways scroll, no console errors. |
+| My trip | Next town + km, ETA, km left, route map, pick-up and delivery cards with big Call buttons, goods, Start trip / Reached (Reached → "Delivered. Thank you!"). |
+| Truck health | Big tyre diagram (tap a tyre: pressure + temperature), Engine / Brakes / Battery tiles ("Not monitored" when the plan doesn't include them). |
+| Full-screen alert | One icon, one sentence in Tamil + English (+ Hindi when Hindi is chosen), Play voice (browser text-to-speech: Tamil / Hindi voice if the phone has one, otherwise English with a note), Navigate to garage (opens Google Maps directions to the nearest open sample garage), Call owner (sample number). Dark navy night mode, automatic 7 pm-6 am, with a switch. **Tamil/Hindi sentences are machine translations: need a native speaker's review** (TODO in `frontend/src/i18n/alertSentences.ts`). **Not tested: the actual sound on a real Android phone.** |
+| SOS | Press and hold 2 seconds (a short tap does nothing, so no accidental SOS). Uses phone GPS if allowed, else the truck's last position. **Demo: nothing is sent.** "Call 112" (India emergency number) and "Call owner" buttons. |
+| My trips | Driving score (0-100) with an 8-week trend, simple tips, past trips. Sample data. |

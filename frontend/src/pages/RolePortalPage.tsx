@@ -30,6 +30,7 @@ const COMING: Record<'driver' | 'shipper', { stage: string; items: { icon: Lucid
 }
 
 export default function RolePortalPage({ role }: { role: Exclude<Role, 'owner'> }) {
+  // Since stage W5 only the shipper uses this placeholder (built in W6).
   const { stage, items } = COMING[role]
   return (
     <PortalShell title={role === 'driver' ? 'portal.driver' : 'portal.shipper'} home={PORTAL_HOME[role]}>

@@ -561,3 +561,75 @@ export const tyreCostByBrand = () => TYRE_COST_BY_BRAND
 export function bookGarageHref(p: Prediction): string {
   return p.id.startsWith('tp-') ? `/owner/alerts/${p.id.slice(3)}` : '/owner/garages'
 }
+
+/* ------------------------------------------------------------------
+ * Driver portal (stage W5). ALWAYS sample data for now: drivers can't read the
+ * owner's trucks (row-level security), and there is no driver-to-truck link in the
+ * database yet. The demo driver is Murugan K. on TN 99 ZZ 0001.
+ * Future: a driver_assignments table + GET /api/driver/home for the logged-in driver.
+ * ------------------------------------------------------------------ */
+
+export const DRIVER_DATA_MOCKED = true
+const DEMO_DRIVER_ID = 'drv-1'
+/** Sample owner phone the driver can call. */
+export const DEMO_OWNER_PHONE = '+91 90000 30001'
+
+export interface DriverHome {
+  driver: Driver
+  truck: TruckSummary
+  shipment: Shipment | null
+  openAlerts: Alert[]
+}
+
+// Future: GET /api/driver/home
+export async function getDriverHome(): Promise<DriverHome> {
+  const driver = DRIVERS.find((d) => d.id === DEMO_DRIVER_ID)!
+  const truck = mockGetTrucks().find((t) => t.reg_no === driver.truck_id)!
+  // The current trip, or one delivered in the last 12 hours (so "Delivered" stays visible).
+  const recent = Date.now() - 12 * 3_600_000
+  const s =
+    SHIPMENTS.find((x) => x.driver_id === driver.id && x.status !== 'delivered') ??
+    SHIPMENTS.find((x) => x.driver_id === driver.id && x.status === 'delivered' && x.eta && new Date(x.eta).getTime() > recent) ??
+    null
+  return delay({
+    driver: { ...driver, truck_id: truck.id },
+    truck,
+    shipment: s ? { ...s, truck_id: truck.id } : null,
+    openAlerts: mockGetAlerts(true).filter((a) => a.truck_id === truck.id),
+  })
+}
+
+// Future: POST /api/driver/trip/{id}/start | /reached
+export async function setTripStatus(shipmentId: string, status: 'in_transit' | 'delivered'): Promise<void> {
+  const s = SHIPMENTS.find((x) => x.id === shipmentId)
+  if (s) {
+    s.status = status
+    if (status === 'delivered') {
+      s.eta = new Date().toISOString()
+      s.distance_left_km = 0
+    }
+  }
+  return delay(undefined)
+}
+
+/** Nearest open garages for the driver (sample garages; no owner login needed). */
+export async function getDriverGarages(lat: number, lon: number): Promise<NearbyGarage[]> {
+  return delay(mockGetNearestGarages(lat, lon, 'tyre'))
+}
+
+// Future: POST /api/driver/sos  (would alert the owner + emergency contacts by SMS / WhatsApp)
+export async function sendSos(_at: { lat: number; lon: number; source: 'phone' | 'truck' }): Promise<{ notified: string[] }> {
+  return delay({ notified: ['Owner (Demo Owner)', 'Fleet manager (sample)', 'Emergency contact (sample)'] }, 600)
+}
+
+/** Most dangerous first: what a driver should see at the top. */
+const DRIVER_ALERT_RANK: Record<Alert['type'], number> = {
+  critical_pressure: 0,
+  slow_leak: 1,
+  high_temp: 2,
+  low_pressure: 3,
+  sensor_offline: 4,
+}
+export function worstAlertForDriver(alerts: Alert[]): Alert | undefined {
+  return [...alerts].sort((a, b) => Number(b.severity === 'critical') - Number(a.severity === 'critical') || DRIVER_ALERT_RANK[a.type] - DRIVER_ALERT_RANK[b.type])[0]
+}

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes, useParams } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import PlansPage from './pages/PlansPage'
@@ -8,6 +8,12 @@ import AboutPage from './pages/AboutPage'
 import AppLayout from './components/AppLayout'
 import RequireRole from './auth/RequireRole'
 import RolePortalPage from './pages/RolePortalPage'
+import DriverLayout, { DriverDataProvider } from './pages/driver/DriverLayout'
+import MyTripPage from './pages/driver/MyTripPage'
+import TruckCockpitPage from './pages/driver/TruckCockpitPage'
+import DriverAlertPage from './pages/driver/DriverAlertPage'
+import SosPage from './pages/driver/SosPage'
+import DriverHistoryPage from './pages/driver/DriverHistoryPage'
 import AlertsPage from './pages/AlertsPage'
 import DashboardPage from './pages/owner/DashboardPage'
 import LiveMapPage from './pages/owner/LiveMapPage'
@@ -91,14 +97,24 @@ export default function App() {
       <Route path="/fleet" element={<Navigate to="/owner/dashboard" replace />} />
       <Route path="/alerts" element={<Navigate to="/owner/alerts" replace />} />
       <Route path="/trucks/:id" element={<OldTruckLink />} />
+      {/* Driver portal (stage W5) */}
       <Route
-        path="/driver"
         element={
           <RequireRole role="driver">
-            <RolePortalPage role="driver" />
+            <DriverDataProvider>
+              <Outlet />
+            </DriverDataProvider>
           </RequireRole>
         }
-      />
+      >
+        <Route element={<DriverLayout />}>
+          <Route path="/driver" element={<MyTripPage />} />
+          <Route path="/driver/truck" element={<TruckCockpitPage />} />
+          <Route path="/driver/sos" element={<SosPage />} />
+          <Route path="/driver/history" element={<DriverHistoryPage />} />
+        </Route>
+        <Route path="/driver/alert/:id" element={<DriverAlertPage />} />
+      </Route>
       <Route
         path="/shipper"
         element={

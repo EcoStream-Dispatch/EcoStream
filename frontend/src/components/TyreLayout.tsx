@@ -29,9 +29,11 @@ interface Props {
   tyres: TyreWithStatus[]
   selectedId: string | null
   onSelect: (tyreId: string) => void
+  /** Size of the drawing (default fits a 280 px column) */
+  className?: string
 }
 
-export default function TyreLayout({ axleConfig, tyres, selectedId, onSelect }: Props) {
+export default function TyreLayout({ axleConfig, tyres, selectedId, onSelect, className = 'mx-auto w-full max-w-[280px]' }: Props) {
   const axles = AXLE_LAYOUTS[axleConfig]
   const byPosition = new Map(tyres.map((t) => [t.position, t]))
   // y of each axle: small gaps inside a group (front / rear / trailer), bigger gaps between groups.
@@ -112,7 +114,7 @@ export default function TyreLayout({ axleConfig, tyres, selectedId, onSelect }: 
   return (
     <svg
       viewBox={`0 0 200 ${height}`}
-      className="mx-auto w-full max-w-[280px]"
+      className={className}
       role="group"
       aria-label="Tyre layout, front of truck at the top"
     >
