@@ -11,6 +11,7 @@ import { ALERT_TITLE, formatAlertValue } from '../lib/status'
 import { formatDateTimeIST, timeAgo } from '../lib/format'
 import { positionName } from '../lib/tyreLayout'
 import type { Alert, TruckSummary } from '../types'
+import { useLanguage } from '../i18n/LanguageProvider'
 
 type Filter = 'open' | 'closed'
 
@@ -20,6 +21,7 @@ type Filter = 'open' | 'closed'
  */
 export default function AlertsPage() {
   const [filter, setFilter] = useState<Filter>('open')
+  const { t } = useLanguage()
   const alertsQ = useApi(() => getAlerts(filter === 'open'), [filter])
   // Trucks give us the reg no, tyre position and location for each alert.
   const trucksQ = useApi(getTrucks, [])
@@ -35,7 +37,7 @@ export default function AlertsPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-bold">Alerts</h1>
+      <h1 className="text-2xl font-bold">{t('alerts.title')}</h1>
 
       {/* Open / Closed filter */}
       <div className="mt-3 inline-flex rounded-lg bg-white p-1 ring-1 ring-gray-200" role="tablist">
@@ -49,7 +51,7 @@ export default function AlertsPage() {
               filter === f ? 'bg-green-700 text-white' : 'text-navy-700 hover:bg-gray-100'
             }`}
           >
-            {f}
+            {t(f === 'open' ? 'alerts.open' : 'alerts.closed')}
           </button>
         ))}
       </div>
@@ -77,6 +79,7 @@ export default function AlertsPage() {
 }
 
 function AlertCard({ alert, truck, onAcked }: { alert: Alert; truck?: TruckSummary; onAcked: () => void }) {
+  const { t } = useLanguage()
   const [busy, setBusy] = useState(false)
   const [ackError, setAckError] = useState<string | null>(null)
   const tyre = truck?.tyres.find((t) => t.id === alert.tyre_id)
@@ -126,7 +129,7 @@ function AlertCard({ alert, truck, onAcked }: { alert: Alert; truck?: TruckSumma
 
       {isOpen && (
         <>
-          <h3 className="mt-4 mb-2 text-sm font-bold uppercase tracking-wide text-navy-700">Nearest open garages</h3>
+          <h3 className="mt-4 mb-2 text-sm font-bold uppercase tracking-wide text-navy-700">{t('alerts.garages')}</h3>
           <GarageList lat={truck?.lat ?? null} lon={truck?.lon ?? null} />
 
           <button
@@ -134,7 +137,7 @@ function AlertCard({ alert, truck, onAcked }: { alert: Alert; truck?: TruckSumma
             disabled={busy}
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-navy-900/20 px-4 py-2.5 font-semibold text-navy-900 transition hover:bg-green-50 disabled:opacity-50 sm:w-auto"
           >
-            <CheckCheck size={18} aria-hidden /> {busy ? 'Saving…' : 'Acknowledge'}
+            <CheckCheck size={18} aria-hidden /> {busy ? 'Saving…' : t('alerts.acknowledge')}
           </button>
           {ackError && <p className="mt-2 text-sm text-critical">{ackError}</p>}
         </>

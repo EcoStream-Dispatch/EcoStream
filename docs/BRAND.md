@@ -25,7 +25,7 @@ The colours live in two places that must stay in sync:
 | OK | green-500 | `bg-status-ok` | `--status-ok` |
 | Warning | warning | `bg-status-warning` | `--status-warning` |
 | Critical | critical | `bg-status-critical` | `--status-critical` |
-| Offline | grey #9CA3AF | `bg-status-offline` | `--status-offline` |
+| Offline | grey #9AA5B1 | `bg-status-offline` | `--status-offline` |
 
 Never use colour alone to show status: always add a word or icon too (colour-blind users, bright sunlight on phones).
 

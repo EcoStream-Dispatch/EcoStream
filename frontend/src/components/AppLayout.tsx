@@ -5,15 +5,18 @@ import { USING_MOCK_DATA } from '../services/api'
 import { LiveProvider, useLiveStatus } from '../services/live'
 import { useAuth } from '../auth/AuthProvider'
 import { asset } from '../lib/asset'
+import { useLanguage } from '../i18n/LanguageProvider'
+import LanguageSwitch from './LanguageSwitch'
+import type { StringKey } from '../i18n/strings'
 
 /*
  * Shell for the owner pages (Fleet, Truck, Alerts).
  * Phones: logo bar on top, tab bar at the bottom (easy to reach with a thumb).
  * Wider screens: links move into the top bar.
  */
-const NAV = [
-  { to: '/fleet', label: 'Fleet', icon: Truck },
-  { to: '/alerts', label: 'Alerts', icon: BellRing },
+const NAV: { to: string; label: StringKey; icon: typeof Truck }[] = [
+  { to: '/fleet', label: 'nav.fleet', icon: Truck },
+  { to: '/alerts', label: 'nav.alerts', icon: BellRing },
 ]
 
 export default function AppLayout() {
@@ -42,22 +45,24 @@ function LiveDot() {
 
 function Shell() {
   const { session, signOut } = useAuth()
+  const { t } = useLanguage()
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       <header className="sticky top-0 z-20 border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-2">
           <Link to="/fleet" className="flex items-center gap-2" aria-label="EcoStream fleet">
             <img src={asset('logo-mark.png')} alt="" className="h-9 w-9 object-contain" />
-            <Wordmark className="text-base" />
+            <Wordmark className="hidden text-base min-[420px]:inline" />
           </Link>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <LiveDot />
+            <LanguageSwitch />
             {USING_MOCK_DATA && (
               <span
-                className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-warning/40"
-                title="This screen shows made-up data, not real trucks"
+                className="whitespace-nowrap rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-warning/40"
+                title={t('common.demoDataHint')}
               >
-                Demo data
+                {t('common.demoData')}
               </span>
             )}
             <nav className="hidden gap-1 md:flex" aria-label="Main">
@@ -71,7 +76,7 @@ function Shell() {
                     }`
                   }
                 >
-                  <Icon size={18} aria-hidden /> {label}
+                  <Icon size={18} aria-hidden /> {t(label)}
                 </NavLink>
               ))}
             </nav>
@@ -82,7 +87,7 @@ function Shell() {
                 title={`Logged in as ${session.user.email ?? ''}`}
               >
                 <LogOut size={18} aria-hidden />
-                <span className="hidden sm:inline">Log out</span>
+                <span className="hidden sm:inline">{t('nav.logout')}</span>
               </button>
             )}
           </div>
@@ -109,7 +114,7 @@ function Shell() {
             }
           >
             <Icon size={22} aria-hidden />
-            {label}
+            {t(label)}
           </NavLink>
         ))}
       </nav>

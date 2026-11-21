@@ -21,7 +21,7 @@
   --status-ok: var(--green-500);
   --status-warning: var(--warning);
   --status-critical: var(--critical);
-  --status-offline: #9ca3af;
+  --status-offline: #9aa5b1;
 }
 
 body {

@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { LogIn } from 'lucide-react'
 import Header from '../components/Header'
 import { useAuth } from '../auth/AuthProvider'
+import { useLanguage } from '../i18n/LanguageProvider'
 
 /**
  * Owner login (spec section 6.1): email + password through Supabase Auth.
@@ -10,6 +11,7 @@ import { useAuth } from '../auth/AuthProvider'
  */
 export default function LoginPage() {
   const { session, demoMode, signIn } = useAuth()
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const location = useLocation()
   const goTo = (location.state as { from?: string } | null)?.from ?? '/fleet'
@@ -35,23 +37,23 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-12">
-        <h1 className="text-center text-2xl font-bold">Owner login</h1>
+        <h1 className="text-center text-2xl font-bold">{t('login.title')}</h1>
 
         {demoMode ? (
           <div className="mt-6 text-center">
-            <p className="text-navy-700">Login isn't connected yet (no Supabase keys in .env).</p>
+            <p className="text-navy-700">{t('login.demoNote')}</p>
             <Link
               to="/fleet"
               className="mt-6 inline-block rounded-lg bg-green-700 px-6 py-3 font-semibold text-white hover:bg-green-500"
             >
-              View demo dashboard
+              {t('login.viewDemo')}
             </Link>
-            <p className="mt-2 text-xs text-navy-700">Uses made-up data, not real trucks.</p>
+            <p className="mt-2 text-xs text-navy-700">{t('login.demoMade')}</p>
           </div>
         ) : (
           <form onSubmit={onSubmit} className="mt-6 space-y-4" noValidate>
             <label className="block">
-              <span className="text-sm font-semibold">Email</span>
+              <span className="text-sm font-semibold">{t('login.email')}</span>
               <input
                 type="email"
                 autoComplete="email"
@@ -62,7 +64,7 @@ export default function LoginPage() {
               />
             </label>
             <label className="block">
-              <span className="text-sm font-semibold">Password</span>
+              <span className="text-sm font-semibold">{t('login.password')}</span>
               <input
                 type="password"
                 autoComplete="current-password"
@@ -82,14 +84,14 @@ export default function LoginPage() {
               disabled={busy || !email || !password}
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-green-700 px-4 py-3 font-semibold text-white transition hover:bg-green-500 disabled:opacity-50"
             >
-              <LogIn size={18} aria-hidden /> {busy ? 'Logging in…' : 'Log in'}
+              <LogIn size={18} aria-hidden /> {busy ? t('login.busy') : t('login.submit')}
             </button>
-            <p className="text-center text-xs text-navy-700">No account? Ask EcoStream to set one up for you.</p>
+            <p className="text-center text-xs text-navy-700">{t('login.noAccount')}</p>
           </form>
         )}
 
         <Link to="/" className="mt-8 text-center text-sm font-semibold text-green-700 hover:text-green-500">
-          ← Back to home
+          {t('login.back')}
         </Link>
       </main>
     </div>

@@ -108,3 +108,49 @@ export async function getNearestGarages(lat: number, lon: number, service = 'tyr
   const q = new URLSearchParams({ lat: String(lat), lon: String(lon), service })
   return request(`/api/garages/nearest?${q}`)
 }
+
+/* ------------------------------------------------------------------
+ * Public website forms (stage W1).
+ * There is no backend endpoint for these yet, so they are ALWAYS mocked
+ * (even when Supabase is set up): nothing is sent or stored anywhere.
+ * The pages show a "Demo" note. Later: replace the bodies with real
+ * POST calls, e.g. POST /api/garage-signups and POST /api/contact.
+ * ------------------------------------------------------------------ */
+
+/** True while the public forms are not connected to a backend. */
+export const PUBLIC_FORMS_MOCKED = true
+
+export type GarageSignup = {
+  garage_name: string
+  contact_name: string
+  phone: string
+  city: string
+  services: ('tyre' | 'air_brake' | 'engine')[]
+  open_24x7: boolean
+  notes?: string
+}
+
+export type ContactMessage = {
+  name: string
+  phone: string
+  email?: string
+  topic: 'demo' | 'question' | 'garage' | 'other'
+  fleet_size?: string
+  message: string
+}
+
+/** Pretend to send, then return a reference number the page can show. */
+async function mockSubmit(prefix: string): Promise<{ reference: string }> {
+  await new Promise((r) => setTimeout(r, 400))
+  return { reference: `${prefix}-DEMO-${Math.floor(1000 + Math.random() * 9000)}` }
+}
+
+// Future: POST /api/garage-signups
+export async function submitGarageSignup(_form: GarageSignup): Promise<{ reference: string }> {
+  return mockSubmit('GAR')
+}
+
+// Future: POST /api/contact
+export async function submitContact(_form: ContactMessage): Promise<{ reference: string }> {
+  return mockSubmit('MSG')
+}

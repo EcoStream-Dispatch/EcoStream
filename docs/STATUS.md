@@ -43,3 +43,14 @@ against real Supabase Postgres, Auth or Realtime**. What was tested instead:
 - **A sensor that never reported** doesn't raise `sensor_offline` (TPMS sensors are heard one at a time, so new installs would false-alarm).
 - **10-wheel trucks:** the dashboard supports them (positions `R1L-O` … `R2R-O`), but the seed and simulator use 6 tyres per truck, per the spec.
 - **Not done yet:** deployment to Vercel (Stage 7). WhatsApp alerts and Tamil/Hindi are later phases.
+
+## Website build (docs/WEBSITE_SPEC.md)
+
+### W1 public site: done, 21 Nov 2026
+| Item | Status |
+|---|---|
+| Home, Plans & pricing, For garages, About / Contact | **Built.** Screenshots at 360 and 1440 px in `docs/screenshots/w1-*.png`. No horizontal scroll at 360 px on any page (checked with a headless browser). |
+| Garage sign-up form, contact / "Book a demo" form | **Mock only.** Nothing is sent or saved; the page says so. Functions `submitGarageSignup` / `submitContact` in `frontend/src/services/api.ts` are ready to point at a real endpoint. |
+| English / தமிழ் / हिंदी switch | **Built.** English complete. Tamil and Hindi cover navigation, login, alerts and status words only, and are **machine translations: need a native speaker's review** (TODO in `frontend/src/i18n/strings.ts`). |
+| Plan comparison table | Built from `frontend/src/data/plans.ts` (50 parameters from WEBSITE_SPEC). **`docs/PLANS_SPEC.md` is not in the repo yet**, so parameter keys are provisional and the "55 keys" can't be checked. |
+| Add-on prices | Not decided, so the site says "price on request". |

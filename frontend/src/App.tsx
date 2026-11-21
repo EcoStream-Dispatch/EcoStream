@@ -2,6 +2,9 @@ import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
+import PlansPage from './pages/PlansPage'
+import GaragesJoinPage from './pages/GaragesJoinPage'
+import AboutPage from './pages/AboutPage'
 import AppLayout from './components/AppLayout'
 import RequireAuth from './auth/RequireAuth'
 import FleetPage from './pages/FleetPage'
@@ -14,13 +17,16 @@ const TruckPage = lazy(() => import('./pages/TruckPage'))
 
 /**
  * All routes live here.
- * Public: landing + login. Owner pages need a login (RequireAuth; skipped in demo mode)
+ * Public: home, plans, for garages, about/contact, login. Owner pages need a login (RequireAuth; skipped in demo mode)
  * and sit inside AppLayout (top bar, tab bar, live connection).
  */
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/plans" element={<PlansPage />} />
+      <Route path="/garages/join" element={<GaragesJoinPage />} />
+      <Route path="/about" element={<AboutPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route
         element={
