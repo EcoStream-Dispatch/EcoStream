@@ -4,7 +4,7 @@ About 15 minutes. You need: a browser, and a password manager for the passwords 
 
 Files you will paste from:
 - `supabase/setup_all.sql`: **all tables, security rules, realtime and clean-up job in one file**
-  (it is the 6 files in `supabase/migrations/` joined in order)
+  (it is the files in `supabase/migrations/` joined in order)
 - `supabase/seed.sql`: demo owner, 2 trucks × 6 tyres, 13 fake garages (+ demo driver / shipper roles)
 - `supabase/tests/rls_check.sql`: checks everyone only sees their own data (34 checks)
 
@@ -17,6 +17,9 @@ Files you will paste from:
    - **Database password:** click *Generate*, then **save it in your password manager**. You rarely need it, but you can't see it again.
    - **Region:** *South Asia (Mumbai)*, the closest to our trucks.
    - **Plan:** Free.
+   - **Data access:** tick **Enable Data API**, **Grant API access to new tables automatically** and
+     **Enable RLS on new tables automatically**. (Our SQL also sets the permissions itself, so it
+     works even if one is missed.)
 3. Click **Create new project** and wait 1–2 minutes until it says the project is ready.
 
 ## 2. Create the tables (one paste)

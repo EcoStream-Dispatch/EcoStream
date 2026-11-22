@@ -111,11 +111,21 @@ begin
     end;
     names := array_append(names, 'A cannot insert readings directly'); exps := exps || 0::bigint; acts := acts || n;
 
-    with u as (update public.alerts set acknowledged_at = now() where id = a_alert returning 1)
-      select count(*) into n from u;
+    -- Blocked either by row-level security (0 rows) or by missing UPDATE permission (error).
+    begin
+      with u as (update public.alerts set acknowledged_at = now() where id = a_alert returning 1)
+        select count(*) into n from u;
+    exception when insufficient_privilege then
+      n := 0;
+    end;
     names := array_append(names, 'A cannot update alerts directly'); exps := exps || 0::bigint; acts := acts || n;
-    with u as (update public.alerts set resolved_at = now() where id = a_alert returning 1)
-      select count(*) into n from u;
+    -- Blocked either by row-level security (0 rows) or by missing UPDATE permission (error).
+    begin
+      with u as (update public.alerts set resolved_at = now() where id = a_alert returning 1)
+        select count(*) into n from u;
+    exception when insufficient_privilege then
+      n := 0;
+    end;
     names := array_append(names, 'A cannot resolve alerts directly'); exps := exps || 0::bigint; acts := acts || n;
 
     -- ----- Profiles and roles (stage W2), still as owner A -----
