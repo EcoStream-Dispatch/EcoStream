@@ -3,14 +3,10 @@
 About 15 minutes. You need: a browser, and a password manager for the passwords and keys.
 
 Files you will paste from:
-- `supabase/migrations/20261120000001_init_schema.sql`: tables, indexes, row-level security, realtime
-- `supabase/migrations/20261120000002_readings_retention.sql`: deletes readings older than 30 days
-- `supabase/migrations/20261120000003_latest_reading_view.sql`: fast "latest reading per tyre" view
-- `supabase/migrations/20261121000004_profiles_roles.sql`: login roles (owner / driver / shipper)
-- `supabase/migrations/20261121000005_more_axle_layouts.sql`: allows 12, 14 and 18-wheel trucks
-- `supabase/migrations/20261121000006_alert_resolved.sql`: "resolved" state for alerts
-- `supabase/seed.sql`: demo owner, 2 trucks × 6 tyres, 13 fake garages
-- `supabase/tests/rls_check.sql`: checks owners only see their own data
+- `supabase/setup_all.sql`: **all tables, security rules, realtime and clean-up job in one file**
+  (it is the 6 files in `supabase/migrations/` joined in order)
+- `supabase/seed.sql`: demo owner, 2 trucks × 6 tyres, 13 fake garages (+ demo driver / shipper roles)
+- `supabase/tests/rls_check.sql`: checks everyone only sees their own data (34 checks)
 
 > Supabase changes its dashboard now and then. If a menu name below doesn't match exactly, look for the closest one.
 
@@ -23,17 +19,18 @@ Files you will paste from:
    - **Plan:** Free.
 3. Click **Create new project** and wait 1–2 minutes until it says the project is ready.
 
-## 2. Create the tables
+## 2. Create the tables (one paste)
 1. Left menu → **SQL Editor** → **New query**.
-2. Open `supabase/migrations/20261120000001_init_schema.sql`, copy **all** of it, paste, click **Run**.
+2. Open `supabase/setup_all.sql`, copy **all** of it, paste, click **Run**.
    You should see *Success. No rows returned*.
-3. New query again. Paste all of `supabase/migrations/20261120000002_readings_retention.sql` → **Run**.
-   - If it says *extension "pg_cron" is not available*: left menu → **Database** → **Extensions** → search `pg_cron` → enable it → run the file again.
-4. New query again. Paste all of `supabase/migrations/20261120000003_latest_reading_view.sql` → **Run**.
-5. New query again. Paste all of `supabase/migrations/20261121000004_profiles_roles.sql` → **Run**.
-6. New query again. Paste all of `supabase/migrations/20261121000005_more_axle_layouts.sql` → **Run**.
-7. New query again. Paste all of `supabase/migrations/20261121000006_alert_resolved.sql` → **Run**.
-8. Check: left menu → **Table Editor**. You should see 8 tables: `alerts`, `devices`, `fleet_owners`, `garages`, `profiles`, `readings`, `trucks`, `tyres`.
+   - If it says *extension "pg_cron" is not available*: left menu → **Database** → **Extensions** →
+     search `pg_cron` → enable it → then run the file again in a **new** query.
+   - If it says something *already exists*: it was already run once. That's fine; go on.
+3. Check: left menu → **Table Editor**. You should see 8 tables: `alerts`, `devices`, `fleet_owners`,
+   `garages`, `profiles`, `readings`, `trucks`, `tyres`.
+
+(Developers: the same SQL is split by stage in `supabase/migrations/`. After changing a migration,
+run `cd supabase && sh make_setup_all.sh`; `npm test` in `supabase/tests` fails if you forget.)
 
 ## 3. Create the demo owner login
 1. Left menu → **Authentication** → **Users** → **Add user** → **Create new user**.

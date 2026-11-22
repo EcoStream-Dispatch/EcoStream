@@ -32,12 +32,14 @@ const read = (p) => fs.readFileSync(dir + '/' + p, 'utf8')
     create function cron.schedule(n text, s text, c text) returns int language sql as
       $$ insert into cron.job values (n, s, c) on conflict (jobname) do update set schedule = s, command = c returning 1 $$;
   `)
+  // Run setup_all.sql (what people paste into Supabase), after checking it contains every migration.
   const mig = fs.readdirSync(dir + '/migrations').filter((f) => f.endsWith('.sql')).sort()
+  const all = read('setup_all.sql')
   for (const f of mig) {
-    let sql = read('migrations/' + f).replace(/create extension if not exists (pg_cron|pgcrypto);/g, '-- (stubbed) $&')
-    await db.exec(sql)
-    console.log('migration ok:', f)
+    if (!all.includes(read('migrations/' + f))) throw new Error(`setup_all.sql is out of date (${f}): run "sh make_setup_all.sh"`)
   }
+  await db.exec(all.replace(/create extension if not exists (pg_cron|pgcrypto);/g, '-- (stubbed) $&'))
+  console.log(`setup_all.sql ok (${mig.length} migrations)`)
   // Seed should fail clearly before the user exists
   try { await db.exec(read('seed.sql')); console.log('UNEXPECTED: seed ran without user') }
   catch (e) { console.log('seed without user -> error (expected):', e.message) }
