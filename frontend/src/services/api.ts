@@ -7,9 +7,11 @@
  *   Supabase keys set  -> real FastAPI backend, with the owner's login token
  *   no Supabase keys   -> demo mode: made-up data from src/data/mock.ts
  */
-import type { Alert, NearbyGarage, Reading, TruckSummary } from '../types'
+import type { Alert, Booking, NearbyGarage, Reading, TruckSummary } from '../types'
 import {
   mockAckAlert,
+  mockBookGarage,
+  mockGetBooking,
   mockGetAlerts,
   mockGetNearestGarages,
   mockGetReadings,
@@ -107,4 +109,25 @@ export async function getNearestGarages(lat: number, lon: number, service = 'tyr
   if (USING_MOCK_DATA) return delay(mockGetNearestGarages(lat, lon, service))
   const q = new URLSearchParams({ lat: String(lat), lon: String(lon), service })
   return request(`/api/garages/nearest?${q}`)
+}
+
+/** One alert. Uses GET /api/alerts (the spec has no single-alert endpoint). */
+export async function getAlert(id: string): Promise<Alert | null> {
+  const alerts = await getAlerts()
+  return alerts.find((a) => a.id === id) ?? null
+}
+
+/**
+ * Book a garage slot for an alert.
+ * NOT CONNECTED YET: there is no bookings endpoint, so this only works in demo mode.
+ */
+export async function bookGarage(alert: Alert, garage: NearbyGarage): Promise<Booking> {
+  if (USING_MOCK_DATA) return delay(mockBookGarage(alert, garage))
+  throw new ApiError("Booking isn't connected yet. Please call the garage.", 501)
+}
+
+/** A booking made in this session (demo mode only, see bookGarage). */
+export async function getBooking(id: string): Promise<Booking | null> {
+  if (USING_MOCK_DATA) return delay(mockGetBooking(id))
+  return null
 }

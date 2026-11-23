@@ -6,6 +6,8 @@ import AppLayout from './components/AppLayout'
 import RequireAuth from './auth/RequireAuth'
 import FleetPage from './pages/FleetPage'
 import AlertsPage from './pages/AlertsPage'
+import AlertDetailPage from './pages/AlertDetailPage'
+import BookingPage from './pages/BookingPage'
 import { Loading } from './components/PageState'
 
 // The Truck page pulls in the chart library (recharts), which is big.
@@ -50,6 +52,8 @@ export default function App() {
           }
         />
         <Route path="/alerts" element={<AlertsPage />} />
+        <Route path="/alerts/:id" element={<AlertDetailPage />} />
+        <Route path="/bookings/:id" element={<BookingPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

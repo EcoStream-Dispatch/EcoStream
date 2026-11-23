@@ -15,7 +15,7 @@
  *                        its corrected pressure stays flat (spec acceptance criterion 3)
  *                        Plus one old, acknowledged critical alert so "Closed" isn't empty.
  */
-import type { Alert, Garage, NearbyGarage, Reading, Truck, TruckStatus, Tyre, TyreWithStatus, TruckSummary } from '../types'
+import type { Alert, Booking, Garage, NearbyGarage, Reading, Truck, TruckStatus, Tyre, TyreWithStatus, TruckSummary } from '../types'
 import { haversineKm, isOpenNow } from '../lib/geo'
 import { gaugeKpaFromCorrected, psiToKpa } from '../lib/units'
 import { positionsFor } from '../lib/tyreLayout'
@@ -354,4 +354,27 @@ export function mockGetNearestGarages(lat: number, lon: number, service = 'tyre'
     .filter((g) => g.open_now)
     .sort((a, b) => a.distance_km - b.distance_km)
     .slice(0, 3)
+}
+
+// ---------- Bookings (demo only: no table or endpoint yet) ----------
+
+const bookings: Booking[] = []
+
+/** Pretend to book a slot. Nothing is sent anywhere. */
+export function mockBookGarage(alert: Alert, garage: NearbyGarage): Booking {
+  const booking: Booking = {
+    id: `booking-${bookings.length + 1}`,
+    alert_id: alert.id,
+    truck_id: alert.truck_id,
+    tyre_id: alert.tyre_id,
+    garage: { ...garage },
+    created_at: new Date().toISOString(),
+  }
+  bookings.push(booking)
+  return { ...booking }
+}
+
+export function mockGetBooking(id: string): Booking | null {
+  const b = bookings.find((x) => x.id === id)
+  return b ? { ...b } : null
 }

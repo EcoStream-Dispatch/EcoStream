@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCheck } from 'lucide-react'
+import { CheckCheck, ChevronRight } from 'lucide-react'
 import { ackAlert, getAlerts, getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import { useLiveEvents, useThrottled } from '../services/live'
@@ -10,6 +10,7 @@ import { ErrorBox, Loading } from '../components/PageState'
 import { ALERT_TITLE, formatAlertValue } from '../lib/status'
 import { formatDateTimeIST, timeAgo } from '../lib/format'
 import { positionName } from '../lib/tyreLayout'
+import { hoursUntilUnsafe, unsafeLabel } from '../lib/alerts'
 import type { Alert, TruckSummary } from '../types'
 
 type Filter = 'open' | 'closed'
@@ -81,6 +82,7 @@ function AlertCard({ alert, truck, onAcked }: { alert: Alert; truck?: TruckSumma
   const [ackError, setAckError] = useState<string | null>(null)
   const tyre = truck?.tyres.find((t) => t.id === alert.tyre_id)
   const isOpen = !alert.acknowledged_at
+  const countdown = isOpen ? unsafeLabel(hoursUntilUnsafe(alert, truck)) : null
 
   async function acknowledge() {
     setBusy(true)
@@ -102,7 +104,11 @@ function AlertCard({ alert, truck, onAcked }: { alert: Alert; truck?: TruckSumma
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="text-lg font-bold">{ALERT_TITLE[alert.type]}</h2>
+          <h2 className="text-lg font-bold">
+            <Link to={`/alerts/${alert.id}`} className="hover:text-green-700">
+              {ALERT_TITLE[alert.type]}
+            </Link>
+          </h2>
           <p className="text-sm text-navy-700">
             {truck ? (
               <Link to={`/trucks/${truck.id}`} className="font-semibold text-green-700 hover:text-green-500">
@@ -117,12 +123,22 @@ function AlertCard({ alert, truck, onAcked }: { alert: Alert; truck?: TruckSumma
         <StatusBadge status={alert.severity} />
       </div>
 
+      {countdown && (
+        <p className="mt-2 inline-block rounded bg-critical px-2 py-1 font-heading text-xs font-bold uppercase text-white">{countdown}</p>
+      )}
       <p className="mt-2 text-sm">{alert.message}</p>
       <p className="mt-1 text-sm font-semibold">{formatAlertValue(alert.type, alert.value)}</p>
       <p className="mt-1 text-xs text-navy-700">
         Raised {timeAgo(alert.created_at)} ({formatDateTimeIST(alert.created_at)} IST)
         {alert.acknowledged_at && ` · Acknowledged ${formatDateTimeIST(alert.acknowledged_at)} IST`}
       </p>
+
+      <Link
+        to={`/alerts/${alert.id}`}
+        className="mt-3 inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-navy-900 px-4 text-sm font-semibold text-white hover:bg-navy-700"
+      >
+        {isOpen ? 'What to do, book a garage' : 'Open alert'} <ChevronRight size={16} aria-hidden />
+      </Link>
 
       {isOpen && (
         <>

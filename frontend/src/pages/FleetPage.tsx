@@ -9,6 +9,7 @@ import FleetMap from '../components/FleetMap'
 import { ErrorBox, Loading } from '../components/PageState'
 import { ALERT_TITLE, STATUS_STYLE, formatAlertValue } from '../lib/status'
 import { timeAgo } from '../lib/format'
+import { SEVERITY_RANK, hoursUntilUnsafe, unsafeLabel } from '../lib/alerts'
 import { positionName } from '../lib/tyreLayout'
 import type { Alert, TruckSummary, TyreStatus } from '../types'
 
@@ -24,29 +25,13 @@ import type { Alert, TruckSummary, TyreStatus } from '../types'
 
 /** A truck with no reading for this long counts as Offline. */
 const OFFLINE_AFTER_MS = 30 * 60_000
-/** Critical pressure = 80% of recommended (critical_pressure_fraction in api/alert_config.py). */
-const CRITICAL_FRACTION = 0.8
+const RANK = SEVERITY_RANK
 
 type FleetState = TyreStatus
 
 function fleetState(t: TruckSummary, now = Date.now()): FleetState {
   if (!t.last_seen_at || now - new Date(t.last_seen_at).getTime() > OFFLINE_AFTER_MS) return 'offline'
   return t.status
-}
-
-const RANK = { critical: 2, warning: 1 } as const
-
-/**
- * For a slow leak: hours until the tyre reaches critical pressure at the current leak rate.
- * Returns null when it can't be worked out.
- */
-export function hoursUntilUnsafe(alert: Alert, truck: TruckSummary | undefined): number | null {
-  if (alert.type !== 'slow_leak' || alert.value >= 0 || !truck) return null
-  const tyre = truck.tyres.find((t) => t.id === alert.tyre_id)
-  if (!tyre?.latest) return null
-  const margin = tyre.latest.corrected_kpa - tyre.recommended_cold_kpa * CRITICAL_FRACTION
-  if (margin <= 0) return 0
-  return margin / -alert.value
 }
 
 export default function FleetPage() {
@@ -276,7 +261,7 @@ function Incident({ alert, truck }: { alert: Alert; truck?: TruckSummary }) {
         </div>
         {hours !== null ? (
           <span className="shrink-0 animate-pulse rounded bg-critical px-2 py-1 text-center font-heading text-[11px] font-bold uppercase text-white">
-            {hours < 1 ? 'Unsafe now' : `Unsafe in ~${Math.round(hours)} h`}
+            {unsafeLabel(hours)}
           </span>
         ) : (
           <StatusBadge status={alert.severity} className="shrink-0" />
@@ -306,10 +291,10 @@ function Incident({ alert, truck }: { alert: Alert; truck?: TruckSummary }) {
           <span className="truncate">{g ? `${g.name} (${g.distance_km.toFixed(1)} km)` : garages.loading ? 'Finding garage…' : 'No open garage nearby'}</span>
         </span>
         <Link
-          to="/alerts"
+          to={`/alerts/${alert.id}`}
           className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-lg bg-green-700 px-4 text-sm font-semibold text-white hover:bg-green-500"
         >
-          <Wrench size={16} aria-hidden /> Garages & call
+          <Wrench size={16} aria-hidden /> What to do
         </Link>
       </div>
       <p className="mt-2 text-xs text-navy-700">Raised {timeAgo(alert.created_at)}</p>

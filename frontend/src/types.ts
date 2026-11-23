@@ -119,3 +119,20 @@ export interface NearbyGarage extends Garage {
   distance_km: number
   open_now: boolean
 }
+
+// ---------- Frontend-only for now (no table or endpoint yet) ----------
+// Every field below is optional or demo-only, so the real API keeps compiling.
+// The list of what the backend will need is in docs/FRONTEND_DATA_NEEDS.md.
+
+/**
+ * A garage slot booked from an alert. Demo only: there is no bookings table or
+ * endpoint yet, so in demo mode it lives in memory (src/data/mock.ts).
+ */
+export interface Booking {
+  id: string
+  alert_id: string
+  truck_id: string
+  tyre_id: string
+  garage: NearbyGarage
+  created_at: string
+}
