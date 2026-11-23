@@ -83,14 +83,19 @@ const HARDWARE: { label: string; value: string }[] = [
   { label: 'Engine data', value: 'CAN / J1939 (later)' },
 ]
 
-export default function LandingPage() {
+/**
+ * `embedded`: used under the 3D landing page (src/landing3d), which draws its own
+ * header and hero, so only the sections below the hero are shown.
+ */
+export default function LandingPage({ embedded = false }: { embedded?: boolean }) {
   const { t } = useLang()
   return (
     <div className="flex min-h-screen flex-col bg-green-50">
-      <Header />
+      {!embedded && <Header />}
 
       <main className="flex-1">
         {/* ---------- Hero ---------- */}
+        {!embedded && (
         <section className="mx-auto flex max-w-6xl flex-col items-center px-4 pb-14 pt-8 text-center md:pt-14">
           <div className="mb-6 flex w-full justify-end">
             <LanguageSwitch />
@@ -151,6 +156,7 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+        )}
 
         {/* ---------- Five pillars ---------- */}
         <section className="border-y border-green-500/15 bg-white">

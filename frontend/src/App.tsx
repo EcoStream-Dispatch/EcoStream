@@ -13,11 +13,26 @@ import ProfilePage from './pages/ProfilePage'
 import DriversPage from './pages/DriversPage'
 import ReportsPage from './pages/ReportsPage'
 import { Loading } from './components/PageState'
+import Loader from './landing3d/Loader'
+import { hasWebGL } from './landing3d/store'
 
 // The Truck page pulls in the chart library (recharts), which is big.
 // Loading it only when needed keeps the first page load fast on phones.
 const TruckPage = lazy(() => import('./pages/TruckPage'))
 const DriverPage = lazy(() => import('./pages/DriverPage'))
+// The 3D landing page (three.js) is only loaded on "/", so the app itself stays light.
+const Landing3D = lazy(() => import('./landing3d/Landing3D'))
+
+/** 3D landing when the browser can draw it and the user hasn't asked for less motion. */
+function HomeRoute() {
+  const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (reduced || !hasWebGL()) return <LandingPage />
+  return (
+    <Suspense fallback={<Loader done={false} />}>
+      <Landing3D />
+    </Suspense>
+  )
+}
 
 /**
  * All routes live here.
@@ -27,7 +42,7 @@ const DriverPage = lazy(() => import('./pages/DriverPage'))
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" element={<HomeRoute />} />
       <Route path="/login" element={<LoginPage />} />
       <Route
         path="/driver"

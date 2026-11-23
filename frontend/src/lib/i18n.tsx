@@ -48,6 +48,11 @@ const en = {
   'login.demoNote': "Login isn't connected yet, so this opens the demo with made-up data.",
   'login.openDemo': 'Open demo',
   'login.driverDemo': 'Open driver demo',
+  // ---- 3D landing page (ta/hi fall back to English for now) ----
+  'l3d.loading': 'Starting the engine…',
+  'l3d.skip': 'Skip to app',
+  'l3d.scroll': 'Scroll to see how it works',
+  'l3d.heroKicker': 'Predictive maintenance for Indian trucks',
   // ---- Owner app (first draft translations below; native review needed) ----
   'nav.fleet': 'Fleet',
   'nav.alerts': 'Alerts',
