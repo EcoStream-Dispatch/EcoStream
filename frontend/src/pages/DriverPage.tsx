@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { Gauge, Lock, LogOut, MapPin, Navigation, Phone, Volume2, Wrench } from 'lucide-react'
+import { BadgeCheck, Disc3, Gauge, Lock, LogOut, Navigation, Phone, Siren, Thermometer, Volume2, Wrench, type LucideIcon } from 'lucide-react'
 import { getAlerts, getNearestGarages, getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import { LiveProvider, useLiveEvents, useThrottled } from '../services/live'
@@ -15,6 +15,7 @@ import { ALERT_TITLE, STATUS_STYLE } from '../lib/status'
 import { positionName } from '../lib/tyreLayout'
 import { timeAgo } from '../lib/format'
 import { asset } from '../lib/asset'
+import { kpaToBar, kpaToPsi } from '../lib/units'
 import { USING_MOCK_DATA } from '../services/api'
 import type { Alert, TruckSummary } from '../types'
 
@@ -78,45 +79,56 @@ function Cockpit() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl px-4 pb-10 pt-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-extrabold">Live cockpit</h1>
-          {truck && (
-            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-bold uppercase tracking-wider ring-1 ring-green-500/20">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" aria-hidden />
-              {truck.reg_no} · seen {timeAgo(truck.last_seen_at)}
-            </span>
-          )}
-        </div>
-
+      <main className="mx-auto w-full max-w-6xl space-y-4 px-4 pb-10 pt-4">
         {trucksQ.loading && !trucksQ.data && <Loading what="your truck" />}
         {trucksQ.error && <ErrorBox message={trucksQ.error} onRetry={trucksQ.reload} />}
-        {trucksQ.data && !truck && <p className="mt-4 text-navy-700">No truck is linked to this login yet.</p>}
+        {trucksQ.data && !truck && <p className="text-navy-700">No truck is linked to this login yet.</p>}
 
         {truck && (
           <>
-            <div className="mt-4">
-              {alert ? <AlertBanner alert={alert} truck={truck} /> : <AllGood />}
+            {/* Command bar (Stitch v2): title, truck chips, live chip, SOS */}
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-3 shadow-md ring-1 ring-green-500/10">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-navy-900 text-green-300">
+                  <Gauge size={26} aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-xl font-extrabold md:text-2xl">Live cockpit</h1>
+                    <span className="rounded bg-gray-100 px-2 py-0.5 font-heading text-[11px] font-bold tracking-wider">{truck.reg_no}</span>
+                  </div>
+                  <p className="truncate text-sm text-navy-700">
+                    {truck.make} {truck.model} · {truck.tyres.length} tyres
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-xs font-bold uppercase tracking-wider text-green-700">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" aria-hidden /> Seen {timeAgo(truck.last_seen_at)}
+                </span>
+                <a
+                  href="tel:112"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-critical px-4 font-semibold uppercase tracking-wider text-white shadow-md hover:bg-red-800"
+                  title="Calls 112, India's emergency number"
+                >
+                  <Siren size={18} aria-hidden /> SOS 112
+                </a>
+              </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-12">
-              <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-green-500/15 md:col-span-5">
-                <h2 className="text-lg font-bold">Tyres</h2>
-                <TyreBoard truck={truck} />
-              </section>
+            {/* Navy banner: the one thing to do now, with voice */}
+            {alert ? <AlertBanner alert={alert} truck={truck} /> : <AllGood />}
 
-              <div className="flex flex-col gap-4 md:col-span-7">
-                <NextGarage truck={truck} />
+            {/* Sensor cards */}
+            <SensorCards truck={truck} />
+
+            {/* Map + garages */}
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <div className="min-w-0 lg:col-span-8">
                 <FleetMap trucks={[truck]} />
-                <div className="rounded-2xl bg-white p-5 opacity-70 shadow-sm ring-1 ring-gray-200">
-                  <div className="flex items-center justify-between">
-                    <h2 className="inline-flex items-center gap-2 text-lg font-bold">
-                      <Gauge size={20} aria-hidden /> Engine
-                    </h2>
-                    <Lock size={18} className="text-navy-700" aria-hidden />
-                  </div>
-                  <p className="mt-2 text-sm text-navy-700">Coolant, oil temperature and fault codes come in a later update.</p>
-                </div>
+              </div>
+              <div className="min-w-0 lg:col-span-4">
+                <Garages truck={truck} />
               </div>
             </div>
           </>
@@ -245,44 +257,136 @@ function TyreBoard({ truck }: { truck: TruckSummary }) {
   )
 }
 
-function NextGarage({ truck }: { truck: TruckSummary }) {
+function Garages({ truck }: { truck: TruckSummary }) {
   const { data, loading } = useApi(
     () => (truck.lat == null || truck.lon == null ? Promise.resolve([]) : getNearestGarages(truck.lat, truck.lon, 'tyre')),
     [truck.lat, truck.lon],
   )
-  const g = data?.[0]
   return (
-    <section id="next-garage" className="scroll-mt-20 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-green-500/15">
-      <h2 className="inline-flex items-center gap-2 text-lg font-bold">
-        <Wrench size={20} className="text-green-700" aria-hidden /> Next open garage
-      </h2>
-      {loading && !data && <p className="mt-2 text-sm text-navy-700">Finding garages…</p>}
-      {data && !g && <p className="mt-2 text-sm text-navy-700">No open tyre garage found nearby.</p>}
-      {g && (
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <div className="min-w-0 basis-full sm:basis-auto sm:flex-1">
-            <p className="font-semibold">{g.name}</p>
-            <p className="text-sm text-navy-700">
-              <MapPin size={14} className="mr-1 inline" aria-hidden />
-              {g.distance_km.toFixed(1)} km · {g.open_24x7 ? 'Open 24×7' : `Open till ${g.closes}`}
-            </p>
-          </div>
-          <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${g.lat},${g.lon}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-green-700 px-4 font-semibold text-white hover:bg-green-500 sm:flex-none"
-          >
-            <Navigation size={18} aria-hidden /> Navigate
-          </a>
-          <a
-            href={`tel:${g.phone.replace(/\s/g, '')}`}
-            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border-2 border-green-700 px-4 font-semibold text-green-700 hover:bg-green-50 sm:flex-none"
-          >
-            <Phone size={18} aria-hidden /> Call
-          </a>
-        </div>
-      )}
+    <section id="next-garage" className="h-full scroll-mt-20 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-green-500/15">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="inline-flex items-center gap-2 text-lg font-bold">
+          <Wrench size={20} className="text-green-700" aria-hidden /> Open garages nearby
+        </h2>
+        {data && data.length > 0 && <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-bold">{data.length} found</span>}
+      </div>
+      <p className="mt-1 text-xs text-navy-700">Straight-line distance from your last position.</p>
+      {loading && !data && <p className="mt-3 text-sm text-navy-700">Finding garages…</p>}
+      {data && data.length === 0 && <p className="mt-3 text-sm text-navy-700">No open tyre garage found nearby.</p>}
+      <ul className="mt-3 space-y-2">
+        {(data ?? []).map((g, i) => (
+          <li key={g.id} className="rounded-xl bg-gray-50 p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="flex items-center gap-1 font-semibold">
+                  <span className="truncate">{g.name}</span>
+                  {g.verified && <BadgeCheck size={16} className="shrink-0 text-green-700" aria-label="Verified" />}
+                </p>
+                <p className="text-xs text-navy-700">{g.open_24x7 ? 'Open 24×7' : `Open now, till ${g.closes}`}</p>
+              </div>
+              <span className={`shrink-0 rounded px-2 py-0.5 text-xs font-bold ${i === 0 ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-navy-700'}`}>
+                {g.distance_km.toFixed(1)} km
+              </span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${g.lat},${g.lon}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-[44px] items-center justify-center gap-1 rounded-lg bg-green-700 text-sm font-semibold text-white hover:bg-green-500"
+              >
+                <Navigation size={16} aria-hidden /> Navigate
+              </a>
+              <a
+                href={`tel:${g.phone.replace(/\s/g, '')}`}
+                className="inline-flex min-h-[44px] items-center justify-center gap-1 rounded-lg border-2 border-green-700 text-sm font-semibold text-green-700 hover:bg-green-50"
+              >
+                <Phone size={16} aria-hidden /> Call
+              </a>
+            </div>
+          </li>
+        ))}
+      </ul>
     </section>
+  )
+}
+
+/** Sensor cards row (Stitch v2 "bento"). Only tyre data is real in Phase 1; engine is shown locked. */
+function SensorCards({ truck }: { truck: TruckSummary }) {
+  const withData = truck.tyres.filter((t) => t.latest)
+  const avgKpa = withData.length ? withData.reduce((n, t) => n + t.latest!.corrected_kpa, 0) / withData.length : null
+  const hottest = withData.reduce<(typeof withData)[number] | null>((h, t) => (!h || t.latest!.temp_c > h.latest!.temp_c ? t : h), null)
+  const okCount = truck.tyres.filter((t) => t.status === 'ok').length
+  const allOk = okCount === truck.tyres.length
+
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <Card label="TPMS" title="Tyre pressure" icon={Disc3}>
+        {avgKpa !== null ? (
+          <>
+            <Big value={kpaToPsi(avgKpa).toFixed(0)} unit="psi" />
+            <p className={`mt-1 text-sm font-semibold ${allOk ? 'text-green-700' : 'text-amber-800'}`}>
+              {allOk ? `All ${truck.tyres.length} tyres OK` : `${truck.tyres.length - okCount} of ${truck.tyres.length} need a look`}
+            </p>
+            <p className="text-xs text-navy-700">Average, corrected to 20 °C · {kpaToBar(avgKpa).toFixed(1)} bar</p>
+          </>
+        ) : (
+          <p className="text-sm text-navy-700">No readings yet.</p>
+        )}
+      </Card>
+      <Card label="TPMS" title="Hottest tyre" icon={Thermometer}>
+        {hottest ? (
+          <>
+            <Big value={hottest.latest!.temp_c.toFixed(0)} unit="°C" />
+            <p className={`mt-1 text-sm font-semibold ${hottest.latest!.temp_c > hottest.max_temp_c ? 'text-critical' : 'text-green-700'}`}>
+              {positionName(hottest.position)}
+            </p>
+            <p className="text-xs text-navy-700">Limit {hottest.max_temp_c} °C</p>
+          </>
+        ) : (
+          <p className="text-sm text-navy-700">No readings yet.</p>
+        )}
+      </Card>
+      <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-green-500/10 md:col-span-2 xl:col-span-1 xl:row-span-1">
+        <p className="font-heading text-[11px] font-bold uppercase tracking-wider text-navy-700">Tap a tyre</p>
+        <TyreBoard truck={truck} />
+      </div>
+      <div className="rounded-xl bg-white p-5 opacity-70 shadow-sm ring-1 ring-gray-200">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="font-heading text-[11px] font-bold uppercase tracking-wider text-navy-700">CAN / J1939</p>
+            <h3 className="text-lg font-bold">Engine</h3>
+          </div>
+          <Lock size={18} className="text-navy-700" aria-hidden />
+        </div>
+        <p className="mt-2 text-sm text-navy-700">Coolant, oil temperature and fault codes come in a later update.</p>
+      </div>
+    </div>
+  )
+}
+
+function Card({ label, title, icon: Icon, children }: { label: string; title: string; icon: LucideIcon; children: ReactNode }) {
+  return (
+    <div className="flex flex-col justify-between rounded-xl bg-white p-5 shadow-sm ring-1 ring-green-500/10">
+      <div className="mb-3 flex items-start justify-between">
+        <div>
+          <p className="font-heading text-[11px] font-bold uppercase tracking-wider text-navy-700">{label}</p>
+          <h3 className="text-lg font-bold">{title}</h3>
+        </div>
+        <span className="rounded-lg bg-green-50 p-1.5 text-green-700">
+          <Icon size={22} aria-hidden />
+        </span>
+      </div>
+      <div>{children}</div>
+    </div>
+  )
+}
+
+function Big({ value, unit }: { value: string; unit: string }) {
+  return (
+    <p className="flex items-baseline gap-1">
+      <span className="font-heading text-4xl font-extrabold tracking-tight">{value}</span>
+      <span className="font-heading text-base font-semibold text-navy-700">{unit}</span>
+    </p>
   )
 }
