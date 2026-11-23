@@ -5,6 +5,7 @@ import { USING_MOCK_DATA } from '../services/api'
 import { LiveProvider, useLiveStatus } from '../services/live'
 import { useAuth } from '../auth/AuthProvider'
 import { asset } from '../lib/asset'
+import LanguageSwitch from './LanguageSwitch'
 
 /*
  * Shell for the owner pages (Fleet, Truck, Alerts).
@@ -96,6 +97,7 @@ function Shell() {
               Predict · Protect · Perform
             </span>
             <div className="flex items-center gap-3">
+              <LanguageSwitch className="hidden lg:inline-flex" />
               <span className="md:hidden">
                 <LiveDot />
               </span>

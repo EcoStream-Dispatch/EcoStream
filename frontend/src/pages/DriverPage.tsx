@@ -320,7 +320,7 @@ function SensorCards({ truck }: { truck: TruckSummary }) {
   const allOk = okCount === truck.tyres.length
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-4">
       <Card label="TPMS" title="Tyre pressure" icon={Disc3}>
         {avgKpa !== null ? (
           <>
@@ -367,7 +367,7 @@ function SensorCards({ truck }: { truck: TruckSummary }) {
 
 function Card({ label, title, icon: Icon, children }: { label: string; title: string; icon: LucideIcon; children: ReactNode }) {
   return (
-    <div className="flex flex-col justify-between rounded-xl bg-white p-5 shadow-sm ring-1 ring-green-500/10">
+    <div className="flex flex-col rounded-xl bg-white p-5 shadow-sm ring-1 ring-green-500/10">
       <div className="mb-3 flex items-start justify-between">
         <div>
           <p className="font-heading text-[11px] font-bold uppercase tracking-wider text-navy-700">{label}</p>
