@@ -46,3 +46,33 @@ export function hasWebGL(): boolean {
     return false
   }
 }
+
+// ---------- Demo numbers for the story (clearly labelled "demo" on screen) ----------
+
+/** Recommended cold pressure in the demo, psi (830 kPa, the seed value, is about 120 psi). */
+export const DEMO_RECOMMENDED_PSI = 120
+/** Critical = 80% of recommended (api/alert_config.py). */
+export const DEMO_CRITICAL_PSI = DEMO_RECOMMENDED_PSI * 0.8
+/** Demo leak: 3 psi per hour (the simulator's --leak scenario). */
+export const DEMO_LEAK_PSI_PER_H = 3
+
+/**
+ * The slow-leak scene: as you scroll (0..1) we fast-forward 90 minutes of a 3 psi/hour leak.
+ * Returns the corrected pressure and the hours left until it is unsafe (below 80%).
+ */
+export function leakAt(progress: number): { psi: number; hoursLeft: number; minutesShown: number } {
+  const elapsedH = 1.5 * Math.min(1, Math.max(0, progress))
+  const psi = 110 - DEMO_LEAK_PSI_PER_H * elapsedH
+  const hoursLeft = Math.max(0, (psi - DEMO_CRITICAL_PSI) / DEMO_LEAK_PSI_PER_H)
+  return { psi, hoursLeft, minutesShown: Math.round(elapsedH * 60) }
+}
+
+/** Demo readings shown on the sensor labels (corrected psi, °C). */
+export const DEMO_TYRES: Record<string, { psi: number; temp: number }> = {
+  FL: { psi: 119.6, temp: 49 },
+  FR: { psi: 120.2, temp: 50 },
+  'RL-O': { psi: 110, temp: 54 },
+  'RL-I': { psi: 119.1, temp: 55 },
+  'RR-I': { psi: 120.4, temp: 55 },
+  'RR-O': { psi: 119.8, temp: 54 },
+}

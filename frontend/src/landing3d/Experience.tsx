@@ -4,9 +4,10 @@ import { AdaptiveDpr } from '@react-three/drei'
 import { Bloom, EffectComposer, SMAA, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import World from './World'
-import Truck from './Truck'
+import Truck, { useTruckMaterials, type TruckMaterials } from './Truck'
+import { Sensors, XrayController, useTyreMaterials } from './Xray'
 import Wordmark from './Wordmark'
-import { ease, lerp, story } from './store'
+import { ease, lerp, story, type SectionId } from './store'
 
 /*
  * The fixed 3D canvas behind the landing page.
@@ -28,6 +29,24 @@ const HERO_END: Key = { pos: [-10.5, 3.2, 0.6], look: [0, 1.7, -0.4] }
 const HERO_START_P: Key = { pos: [-7.5, 3.4, 19], look: [-0.4, 0.6, 0] }
 const HERO_END_P: Key = { pos: [-27, 5.5, 0.2], look: [0, 1.4, -0.6] }
 
+/**
+ * Where the camera ends up in each story section (landscape, portrait).
+ * Each section moves the camera from the previous key to its own during its first 55%.
+ * Desktop keys keep the truck right of centre, because the text card is on the left.
+ */
+const KEYS: { id: SectionId; land: Key; port: Key }[] = [
+  { id: 'hero', land: HERO_END, port: HERO_END_P },
+  // X-ray: high three-quarter view, all six tyres visible
+  { id: 'xray', land: { pos: [-9.8, 8.6, 10.8], look: [-2.9, 0.7, -1.0] }, port: { pos: [-12.5, 15, 15], look: [0.9, -2.2, -0.8] } },
+  // Slow leak: close on the rear-left outer tyre (left side = +x)
+  { id: 'leak', land: { pos: [8.4, 2.4, -9.2], look: [2.9, 1.0, -0.6] }, port: { pos: [10.5, 5.2, -11.5], look: [1.3, -1.6, -2.55] } },
+]
+
+function mixKey(out: { pos: THREE.Vector3; look: THREE.Vector3 }, k: Key, t: number) {
+  out.pos.lerp(new THREE.Vector3(...k.pos), t)
+  out.look.lerp(new THREE.Vector3(...k.look), t)
+}
+
 function CameraRig() {
   const { camera, size } = useThree()
   const look = useMemo(() => new THREE.Vector3(), [])
@@ -39,24 +58,31 @@ function CameraRig() {
     smoothPointer.current.x += (story.pointer.x - smoothPointer.current.x) * k
     smoothPointer.current.y += (story.pointer.y - smoothPointer.current.y) * k
 
-    const t = ease(story.progress.hero, 0.05, 0.95)
     const portrait = size.width / size.height < 0.8
-    const a = portrait ? HERO_START_P : HERO_START
-    const b = portrait ? HERO_END_P : HERO_END
-    const px = lerp(a.pos[0], b.pos[0], t)
-    const py = lerp(a.pos[1], b.pos[1], t)
-    const pz = lerp(a.pos[2], b.pos[2], t)
-
-    target.set(px + smoothPointer.current.x * 0.8, py + smoothPointer.current.y * 0.35, pz)
+    const start = portrait ? HERO_START_P : HERO_START
+    const cur = { pos: new THREE.Vector3(...start.pos), look: new THREE.Vector3(...start.look) }
+    for (const k of KEYS) {
+      const t = k.id === 'hero' ? ease(story.progress.hero, 0.05, 0.95) : ease(story.progress[k.id], 0, 0.55)
+      if (t > 0) mixKey(cur, portrait ? k.port : k.land, t)
+    }
+    target.set(cur.pos.x + smoothPointer.current.x * 0.8, cur.pos.y + smoothPointer.current.y * 0.35, cur.pos.z)
     camera.position.lerp(target, Math.min(1, dt * 4))
-    look.set(lerp(a.look[0], b.look[0], t), lerp(a.look[1], b.look[1], t), lerp(a.look[2], b.look[2], t))
+    look.lerp(cur.look, Math.min(1, dt * 5))
     camera.lookAt(look)
   })
   return null
 }
 
 /** The truck drives in from the distance when the page opens, then keeps rolling in place. */
-function DrivingTruck({ startAt }: { startAt: number | null }) {
+function DrivingTruck({
+  startAt,
+  materials,
+  tyres,
+}: {
+  startAt: number | null
+  materials: TruckMaterials
+  tyres: Record<string, THREE.Material>
+}) {
   const ref = useRef<THREE.Group>(null)
   useFrame((state) => {
     if (!ref.current) return
@@ -66,7 +92,8 @@ function DrivingTruck({ startAt }: { startAt: number | null }) {
   })
   return (
     <group ref={ref} position={[0, 0, -34]}>
-      <Truck speed={DRIVE_SPEED / 0.56} />
+      <Truck speed={DRIVE_SPEED / 0.56} materials={materials} tyreMaterials={tyres} />
+      <Sensors />
     </group>
   )
 }
@@ -93,6 +120,22 @@ interface Props {
   paused: boolean
 }
 
+/** Everything inside the canvas (hooks that need the R3F context live here). */
+function Scene({ startAt, onReady }: Omit<Props, 'paused'>) {
+  const materials = useTruckMaterials()
+  const tyres = useTyreMaterials()
+  return (
+    <>
+      <World speed={DRIVE_SPEED} />
+      <DrivingTruck startAt={startAt} materials={materials} tyres={tyres} />
+      <XrayController materials={materials} tyres={tyres} />
+      <Wordmark startAt={startAt} />
+      <CameraRig />
+      <ReadySignal onReady={onReady} />
+    </>
+  )
+}
+
 export default function Experience({ startAt, onReady, paused }: Props) {
   const low = story.lowPower
   return (
@@ -109,11 +152,7 @@ export default function Experience({ startAt, onReady, paused }: Props) {
       }}
     >
       <Suspense fallback={null}>
-        <World speed={DRIVE_SPEED} />
-        <DrivingTruck startAt={startAt} />
-        <Wordmark startAt={startAt} />
-        <CameraRig />
-        <ReadySignal onReady={onReady} />
+        <Scene startAt={startAt} onReady={onReady} />
         <AdaptiveDpr pixelated={false} />
         {!low && (
           <EffectComposer multisampling={0}>

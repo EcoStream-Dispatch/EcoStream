@@ -8,6 +8,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useProgress } from '@react-three/drei'
 import Experience from './Experience'
 import Loader from './Loader'
+import { Body, Kicker, LeakReadout, StorySection, Title } from './StoryCard'
 import { SECTIONS, detectLowPower, story, type SectionId } from './store'
 import LandingPage from '../pages/LandingPage'
 import LanguageSwitch from '../components/LanguageSwitch'
@@ -184,6 +185,22 @@ export default function Landing3D() {
             </div>
           </div>
         </section>
+
+        {/* ---------- 2. X-ray ---------- */}
+        <StorySection id="xray">
+          <Kicker>{t('l3d.xray.kicker')}</Kicker>
+          <Title>{t('l3d.xray.title')}</Title>
+          <Body>{t('l3d.xray.body')}</Body>
+          <p className="mt-3 text-xs text-navy-700">{t('l3d.demo')}</p>
+        </StorySection>
+
+        {/* ---------- 3. Slow leak ---------- */}
+        <StorySection id="leak" height="260vh">
+          <Kicker>{t('l3d.leak.kicker')}</Kicker>
+          <Title>{t('l3d.leak.title')}</Title>
+          <Body>{t('l3d.leak.body')}</Body>
+          <LeakReadout />
+        </StorySection>
 
         {/* ---------- After the story: regular sections on a solid background ---------- */}
         <div ref={storyEnd} className="relative bg-green-50">
