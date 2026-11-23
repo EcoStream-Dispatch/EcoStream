@@ -51,9 +51,12 @@ export function XrayController({ materials, tyres }: { materials: TruckMaterials
     const leakIn = ease(story.progress.leak, 0.0, 0.15)
     // Stay in X-ray during the leak scene, then slowly return to solid for later scenes
     const glass = Math.max(x, 0) * (1 - ease(story.progress.hotleak, 0.0, 0.2))
+    // Signal journey: clear windscreen so the in-cab unit can be seen
+    const clear = ease(story.progress.journey, 0, 0.1) * (1 - ease(story.progress.map, 0, 0.2))
     GLASS_KEYS.forEach((k) => {
       const m = materials[k] as THREE.MeshStandardMaterial
-      const o = lerp(1, k === 'glass' ? 0.08 : 0.16, glass)
+      let o = lerp(1, k === 'glass' ? 0.08 : 0.16, glass)
+      if (k === 'glass') o = Math.min(o, lerp(1, 0.18, clear))
       m.opacity = o
       m.depthWrite = o > 0.97
       m.color.copy(base[k].color).lerp(GLASS_TINT, glass * 0.85)

@@ -8,7 +8,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useProgress } from '@react-three/drei'
 import Experience from './Experience'
 import Loader from './Loader'
-import { Body, Kicker, LeakReadout, StorySection, Title } from './StoryCard'
+import { Body, HotLeakPanel, JourneySteps, Kicker, LeakReadout, StorySection, Title } from './StoryCard'
 import { SECTIONS, detectLowPower, story, type SectionId } from './store'
 import LandingPage from '../pages/LandingPage'
 import LanguageSwitch from '../components/LanguageSwitch'
@@ -200,6 +200,26 @@ export default function Landing3D() {
           <Title>{t('l3d.leak.title')}</Title>
           <Body>{t('l3d.leak.body')}</Body>
           <LeakReadout />
+        </StorySection>
+
+        {/* ---------- 4. Hot is not a leak ---------- */}
+        <StorySection id="hotleak" height="280vh">
+          <Kicker>{t('l3d.hot.kicker')}</Kicker>
+          <Title>{t('l3d.hot.title')}</Title>
+          <div className="hidden md:block">
+            <Body>{t('l3d.hot.body')}</Body>
+          </div>
+          <HotLeakPanel />
+        </StorySection>
+
+        {/* ---------- 5. Signal journey ---------- */}
+        <StorySection id="journey" height="260vh">
+          <Kicker>{t('l3d.journey.kicker')}</Kicker>
+          <Title>{t('l3d.journey.title')}</Title>
+          <div className="hidden md:block">
+            <Body>{t('l3d.journey.body')}</Body>
+          </div>
+          <JourneySteps />
         </StorySection>
 
         {/* ---------- After the story: regular sections on a solid background ---------- */}

@@ -76,3 +76,49 @@ export const DEMO_TYRES: Record<string, { psi: number; temp: number }> = {
   'RR-I': { psi: 120.4, temp: 55 },
   'RR-O': { psi: 119.8, temp: 54 },
 }
+
+// ---------- Hot vs leak (same correction as api/alert_logic.py, in psi) ----------
+
+const P_ATM_PSI = 14.696
+const T_REF_K = 293.15
+
+/** Corrected (20 °C) pressure from gauge pressure and tyre temperature, psi. */
+export function correctedPsi(gaugePsi: number, tempC: number): number {
+  return (gaugePsi + P_ATM_PSI) * (T_REF_K / (tempC + 273.15)) - P_ATM_PSI
+}
+/** Gauge pressure a tyre shows at tempC for a given corrected pressure, psi. */
+export function gaugePsi(corrected: number, tempC: number): number {
+  return (corrected + P_ATM_PSI) * ((tempC + 273.15) / T_REF_K) - P_ATM_PSI
+}
+
+/** Heat slider value chosen by the visitor (null = follow the scroll). */
+export const heatState = { user: null as number | null }
+
+/** 0..1 drive / heat amount for the hot-vs-leak scene. */
+export function heatNow(): number {
+  return heatState.user ?? ease(story.progress.hotleak, 0.12, 0.8)
+}
+
+export interface HotLeakTyre {
+  temp: number
+  gauge: number
+  corrected: number
+}
+
+/**
+ * The two demo tyres at drive/heat amount h (0..1 = 0..2 hours of driving).
+ * Both heat from 30 °C to 85 °C. The hot tyre keeps its air; the leaking one loses 3 psi/hour.
+ */
+export function hotLeakAt(h: number): { hot: HotLeakTyre; leak: HotLeakTyre; minutes: number; alert: boolean } {
+  const temp = 30 + 55 * (1 - Math.exp(-h * 2.6)) / (1 - Math.exp(-2.6))
+  const hours = 2 * h
+  const hotC = DEMO_RECOMMENDED_PSI
+  const leakC = DEMO_RECOMMENDED_PSI - DEMO_LEAK_PSI_PER_H * hours
+  return {
+    hot: { temp, corrected: hotC, gauge: gaugePsi(hotC, temp) },
+    leak: { temp, corrected: leakC, gauge: gaugePsi(leakC, temp) },
+    minutes: Math.round(hours * 60),
+    // slow_leak needs a clear downward slope over at least ~10-15 min of readings (api/alert_logic.py)
+    alert: hours >= 0.25,
+  }
+}

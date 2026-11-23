@@ -6,6 +6,8 @@ import * as THREE from 'three'
 import World from './World'
 import Truck, { useTruckMaterials, type TruckMaterials } from './Truck'
 import { Sensors, XrayController, useTyreMaterials } from './Xray'
+import HotLeakScene from './HotLeak'
+import JourneyScene, { CabUnit } from './Journey'
 import Wordmark from './Wordmark'
 import { ease, lerp, story, type SectionId } from './store'
 
@@ -39,7 +41,10 @@ const KEYS: { id: SectionId; land: Key; port: Key }[] = [
   // X-ray: high three-quarter view, all six tyres visible
   { id: 'xray', land: { pos: [-9.8, 8.6, 10.8], look: [-2.9, 0.7, -1.0] }, port: { pos: [-12.5, 15, 15], look: [0.9, -2.2, -0.8] } },
   // Slow leak: close on the rear-left outer tyre (left side = +x)
+  // (leak key below) then: hot vs leak podium beside the road, then the aerial signal journey
   { id: 'leak', land: { pos: [8.4, 2.4, -9.2], look: [2.9, 1.0, -0.6] }, port: { pos: [10.5, 5.2, -11.5], look: [1.3, -1.6, -2.55] } },
+  { id: 'hotleak', land: { pos: [22, 4.8, 5.4], look: [7.2, 1.5, 5.6] }, port: { pos: [24, 15, 1.2], look: [7.2, -2.6, 1.2] } },
+  { id: 'journey', land: { pos: [-25, 12.5, 27], look: [4.5, 8.5, -7] }, port: { pos: [-36, 32, 48], look: [6, 3, -12] } },
 ]
 
 function mixKey(out: { pos: THREE.Vector3; look: THREE.Vector3 }, k: Key, t: number) {
@@ -94,6 +99,7 @@ function DrivingTruck({
     <group ref={ref} position={[0, 0, -34]}>
       <Truck speed={DRIVE_SPEED / 0.56} materials={materials} tyreMaterials={tyres} />
       <Sensors />
+      <CabUnit />
     </group>
   )
 }
@@ -129,6 +135,8 @@ function Scene({ startAt, onReady }: Omit<Props, 'paused'>) {
       <World speed={DRIVE_SPEED} />
       <DrivingTruck startAt={startAt} materials={materials} tyres={tyres} />
       <XrayController materials={materials} tyres={tyres} />
+      <HotLeakScene />
+      <JourneyScene />
       <Wordmark startAt={startAt} />
       <CameraRig />
       <ReadySignal onReady={onReady} />

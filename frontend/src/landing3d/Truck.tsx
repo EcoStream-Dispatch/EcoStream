@@ -74,7 +74,7 @@ function usePlateTexture(text: string) {
 }
 
 /** Tyre cross-section revolved into a solid (rounded shoulders), axis along x. */
-function useTyreGeometry() {
+export function useTyreGeometry() {
   return useMemo(() => {
     const R = WHEEL_R
     const r = 0.34

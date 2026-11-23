@@ -149,9 +149,9 @@ export default function World({ speed = 12 }: { speed?: number }) {
     [],
   )
 
-  const palms = useScatter(46, 11, 11, 60)
+  const palms = useScatter(46, 11, 12, 60)
   const trees = useScatter(40, 23, 14, 80)
-  const shrubs = useScatter(70, 37, 7.5, 30)
+  const shrubs = useScatter(70, 37, 11.5, 34)
   const poles = useMemo<Placed[]>(() => Array.from({ length: 12 }, (_, i) => ({ x: 8.5, z: START_Z + i * (LOOP / 12), s: 1, r: Math.PI / 2 })), [])
 
   // Far hills (static, they're far away so they barely move)
