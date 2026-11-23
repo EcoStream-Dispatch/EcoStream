@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { BellRing, LogOut, Truck } from 'lucide-react'
+import { BellRing, LogOut, Tag, Truck } from 'lucide-react'
 import Wordmark from './Wordmark'
 import { USING_MOCK_DATA } from '../services/api'
 import { LiveProvider, useLiveStatus } from '../services/live'
@@ -15,6 +15,7 @@ import LanguageSwitch from './LanguageSwitch'
 const NAV = [
   { to: '/fleet', label: 'Fleet', icon: Truck },
   { to: '/alerts', label: 'Alerts', icon: BellRing },
+  { to: '/plans', label: 'Plans', icon: Tag },
 ]
 
 export default function AppLayout() {
@@ -131,7 +132,7 @@ function Shell() {
 
       {/* ---------- Phone tab bar ---------- */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-2 border-t border-gray-200 bg-white md:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-gray-200 bg-white md:hidden"
         aria-label="Main"
       >
         {NAV.map(({ to, label, icon: Icon }) => (

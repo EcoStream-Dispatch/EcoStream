@@ -5,6 +5,8 @@ import { getAlerts, getNearestGarages, getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import { useLiveEvents, useThrottled } from '../services/live'
 import StatusBadge from '../components/StatusBadge'
+import PlanBadge from '../components/PlanBadge'
+import { planOf } from '../lib/plans'
 import FleetMap from '../components/FleetMap'
 import { ErrorBox, Loading } from '../components/PageState'
 import { ALERT_TITLE, STATUS_STYLE, formatAlertValue } from '../lib/status'
@@ -318,7 +320,10 @@ function TruckCard({ truck, issue }: { truck: TruckSummary; issue?: Alert }) {
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-heading text-lg font-bold tracking-wide">{truck.reg_no}</p>
+          <p className="flex flex-wrap items-center gap-2">
+            <span className="font-heading text-lg font-bold tracking-wide">{truck.reg_no}</span>
+            <PlanBadge plan={planOf(truck)} />
+          </p>
           <p className="text-sm text-navy-700">
             {truck.make} {truck.model} · {truck.tyres.length} tyres
           </p>
