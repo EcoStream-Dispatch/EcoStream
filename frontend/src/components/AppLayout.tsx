@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { BellRing, CircleUserRound, LogOut, Tag, Truck, Users } from 'lucide-react'
+import { BarChart3, BellRing, CircleUserRound, LogOut, Tag, Truck, Users } from 'lucide-react'
 import Wordmark from './Wordmark'
 import { USING_MOCK_DATA } from '../services/api'
 import { LiveProvider, useLiveStatus } from '../services/live'
@@ -17,6 +17,7 @@ const NAV = [
   { to: '/fleet', label: 'Fleet', icon: Truck, phone: true },
   { to: '/alerts', label: 'Alerts', icon: BellRing, phone: true },
   { to: '/drivers', label: 'Drivers', icon: Users, phone: true },
+  { to: '/reports', label: 'Reports', icon: BarChart3, phone: true },
   { to: '/plans', label: 'Plans', icon: Tag, phone: false },
   { to: '/profile', label: 'Profile', icon: CircleUserRound, phone: true },
 ]

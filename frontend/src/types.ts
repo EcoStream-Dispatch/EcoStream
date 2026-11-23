@@ -58,6 +58,17 @@ export interface Truck {
   plan?: Plan
   /** NEW, optional: what the truck usually carries, e.g. "Cement bags". Mock only for now. */
   goods_type?: string | null
+  /** NEW, optional: document due dates for compliance reminders. Mock only for now. */
+  compliance?: ComplianceItem[]
+}
+
+/** Truck documents that must be renewed. */
+export type ComplianceKind = 'permit' | 'fitness' | 'puc' | 'insurance'
+
+export interface ComplianceItem {
+  kind: ComplianceKind
+  /** "YYYY-MM-DD" (India date) */
+  due_date: string
 }
 
 export interface Tyre {

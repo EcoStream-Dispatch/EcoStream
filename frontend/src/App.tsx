@@ -11,6 +11,7 @@ import BookingPage from './pages/BookingPage'
 import PlansPage from './pages/PlansPage'
 import ProfilePage from './pages/ProfilePage'
 import DriversPage from './pages/DriversPage'
+import ReportsPage from './pages/ReportsPage'
 import { Loading } from './components/PageState'
 
 // The Truck page pulls in the chart library (recharts), which is big.
@@ -59,6 +60,7 @@ export default function App() {
         <Route path="/bookings/:id" element={<BookingPage />} />
         <Route path="/plans" element={<PlansPage />} />
         <Route path="/drivers" element={<DriversPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

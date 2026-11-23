@@ -71,6 +71,24 @@ const trucks: Truck[] = [
   },
 ]
 
+/** A date `days` from now as "YYYY-MM-DD" (for mock compliance due dates). */
+function dueIn(days: number): string {
+  return new Date(NOW + days * 24 * 60 * MIN).toISOString().slice(0, 10)
+}
+// Due dates: one overdue, a few due within 30 days, the rest later - so every badge shows.
+trucks[0].compliance = [
+  { kind: 'permit', due_date: dueIn(120) },
+  { kind: 'fitness', due_date: dueIn(20) },
+  { kind: 'puc', due_date: dueIn(-5) },
+  { kind: 'insurance', due_date: dueIn(200) },
+]
+trucks[1].compliance = [
+  { kind: 'permit', due_date: dueIn(45) },
+  { kind: 'fitness', due_date: dueIn(300) },
+  { kind: 'puc', due_date: dueIn(12) },
+  { kind: 'insurance', due_date: dueIn(25) },
+]
+
 const RECOMMENDED_KPA = 830 // spec section 8
 
 const tyres: Tyre[] = trucks.flatMap((truck, ti) =>
