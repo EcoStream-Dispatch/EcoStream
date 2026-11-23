@@ -15,6 +15,10 @@ interface AuthState {
   /** true when there is no Supabase config: the app shows mock data, no login needed */
   demoMode: boolean
   signIn: (email: string, password: string) => Promise<string | null>
+  /** Phone login, step 1: send an SMS code. Needs an SMS provider set up in Supabase. */
+  sendOtp: (phone: string) => Promise<string | null>
+  /** Phone login, step 2: check the code. */
+  verifyOtp: (phone: string, code: string) => Promise<string | null>
   signOut: () => Promise<void>
 }
 
@@ -44,6 +48,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return error.message
   }
 
+  async function sendOtp(phone: string): Promise<string | null> {
+    if (!supabase) return 'Login is not set up (no Supabase keys).'
+    const { error } = await supabase.auth.signInWithOtp({ phone })
+    if (!error) return null
+    if (error.message.toLowerCase().includes('provider')) return 'Phone login is not switched on yet. Use email for now.'
+    return error.message
+  }
+
+  async function verifyOtp(phone: string, code: string): Promise<string | null> {
+    if (!supabase) return 'Login is not set up (no Supabase keys).'
+    const { error } = await supabase.auth.verifyOtp({ phone, token: code, type: 'sms' })
+    if (!error) return null
+    if (error.message.toLowerCase().includes('expired') || error.message.toLowerCase().includes('invalid'))
+      return 'Wrong or expired code. Tap "Resend OTP".'
+    return error.message
+  }
+
   async function signOut() {
     if (!supabase) return
     const { error } = await supabase.auth.signOut()
@@ -58,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ ready, session, demoMode: !SUPABASE_CONFIGURED, signIn, signOut }}>
+    <AuthContext.Provider value={{ ready, session, demoMode: !SUPABASE_CONFIGURED, signIn, sendOtp, verifyOtp, signOut }}>
       {children}
     </AuthContext.Provider>
   )

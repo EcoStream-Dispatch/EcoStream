@@ -11,6 +11,7 @@ import { Loading } from './components/PageState'
 // The Truck page pulls in the chart library (recharts), which is big.
 // Loading it only when needed keeps the first page load fast on phones.
 const TruckPage = lazy(() => import('./pages/TruckPage'))
+const DriverPage = lazy(() => import('./pages/DriverPage'))
 
 /**
  * All routes live here.
@@ -22,6 +23,16 @@ export default function App() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/driver"
+        element={
+          <RequireAuth>
+            <Suspense fallback={<Loading what="cockpit" />}>
+              <DriverPage />
+            </Suspense>
+          </RequireAuth>
+        }
+      />
       <Route
         element={
           <RequireAuth>
