@@ -2,7 +2,8 @@ import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Sky } from '@react-three/drei'
 import * as THREE from 'three'
-import { story } from './store'
+import type { Sky as SkyImpl } from 'three-stdlib'
+import { dayFactor, driveFactor, story } from './store'
 
 /*
  * Golden-hour South Indian highway, drawn in code: sky, warm sun, road with moving lane
@@ -12,6 +13,8 @@ import { story } from './store'
 
 /** Direction the sun comes from (low, warm, to the left and a bit behind the truck). */
 export const SUN_DIR = new THREE.Vector3(-0.78, 0.1, -0.6).normalize()
+/** Morning sun for the finale: higher, in front of the truck and to the right. */
+const MORNING_DIR = new THREE.Vector3(0.55, 0.42, -0.72).normalize()
 
 const LOOP = 240 // metres of scenery that repeat
 const START_Z = -200
@@ -88,6 +91,7 @@ function Instanced({
   y = 0,
   baseScale = [1, 1, 1],
   castShadow = false,
+  hide,
 }: {
   items: Placed[]
   geometry: THREE.BufferGeometry
@@ -96,12 +100,15 @@ function Instanced({
   y?: number
   baseScale?: [number, number, number]
   castShadow?: boolean
+  /** Hide the whole group when this returns true (e.g. poles near the finale garage) */
+  hide?: () => boolean
 }) {
   const ref = useRef<THREE.InstancedMesh>(null)
   const tmp = useMemo(() => new THREE.Object3D(), [])
   const update = () => {
     const mesh = ref.current
     if (!mesh) return
+    mesh.visible = !hide?.()
     items.forEach((it, i) => {
       tmp.position.set(it.x, y * it.s, wrapZ(it.z + offset.current))
       tmp.rotation.set(0, it.r, 0)
@@ -166,16 +173,49 @@ export default function World({ speed = 12 }: { speed?: number }) {
     }))
   }, [])
 
+  // drei's <Sky> is a three.js Sky (a Mesh with a ShaderMaterial)
+  const sky = useRef<SkyImpl>(null)
+  const sun = useRef<THREE.DirectionalLight>(null)
+  const hemi = useRef<THREE.HemisphereLight>(null)
+  const fog = useRef<THREE.Fog>(null)
+  const dir = useMemo(() => new THREE.Vector3(), [])
+  const c = useMemo(
+    () => ({ sunEve: new THREE.Color('#ffc27a'), sunDay: new THREE.Color('#fff1da'), fogEve: new THREE.Color('#f2c792'), fogDay: new THREE.Color('#e9eef0') }),
+    [],
+  )
+
   useFrame((_, dt) => {
     if (!story.visible) return
-    const d = speed * Math.min(dt, 0.05)
+    const d = speed * driveFactor() * Math.min(dt, 0.05)
     offset.current += d
     road.offset.y += d / 14
+
+    // Finale: the sun rises to a bright morning
+    const day = dayFactor()
+    dir.copy(SUN_DIR).lerp(MORNING_DIR, day).normalize()
+    const mat = sky.current?.material as THREE.ShaderMaterial | undefined
+    if (mat?.uniforms?.sunPosition) {
+      mat.uniforms.sunPosition.value.copy(dir).multiplyScalar(100)
+      mat.uniforms.rayleigh.value = 2.6 - day * 0.8
+      mat.uniforms.turbidity.value = 9 - day * 2.5
+      mat.uniforms.mieCoefficient.value = 0.007 - day * 0.004
+    }
+    if (sun.current) {
+      sun.current.position.copy(dir).multiplyScalar(40)
+      sun.current.color.copy(c.sunEve).lerp(c.sunDay, day)
+      sun.current.intensity = 3.2 + day * 0.6
+    }
+    if (hemi.current) hemi.current.intensity = 1.25 + day * 0.35
+    if (fog.current) {
+      fog.current.color.copy(c.fogEve).lerp(c.fogDay, day)
+      fog.current.far = 300 + day * 150
+    }
   })
 
   return (
     <>
       <Sky
+        ref={sky}
         distance={4500}
         sunPosition={SUN_DIR.clone().multiplyScalar(100).toArray()}
         turbidity={9}
@@ -183,9 +223,10 @@ export default function World({ speed = 12 }: { speed?: number }) {
         mieCoefficient={0.007}
         mieDirectionalG={0.88}
       />
-      <fog attach="fog" args={['#f2c792', 45, 300]} />
-      <hemisphereLight args={['#ffe3b8', '#8a6a44', 1.25]} />
+      <fog ref={fog} attach="fog" args={['#f2c792', 45, 300]} />
+      <hemisphereLight ref={hemi} args={['#ffe3b8', '#8a6a44', 1.25]} />
       <directionalLight
+        ref={sun}
         position={SUN_DIR.clone().multiplyScalar(40).toArray()}
         intensity={3.2}
         color="#ffc27a"
@@ -224,8 +265,9 @@ export default function World({ speed = 12 }: { speed?: number }) {
       <Instanced items={trees} geometry={geo.roundTrunk} material={mat.trunk} offset={offset} castShadow />
       <Instanced items={trees} geometry={geo.crown} material={mat.crown} offset={offset} castShadow />
       <Instanced items={shrubs} geometry={geo.shrub} material={mat.shrub} offset={offset} baseScale={[0.6, 0.6, 0.6]} />
-      <Instanced items={poles} geometry={geo.pole} material={mat.pole} offset={offset} castShadow />
-      <Instanced items={poles} geometry={geo.arm} material={mat.pole} offset={offset} />
+      {/* poles stand on the garage side of the road, so they step aside for the finale */}
+      <Instanced items={poles} geometry={geo.pole} material={mat.pole} offset={offset} castShadow hide={() => dayFactor() > 0.35} />
+      <Instanced items={poles} geometry={geo.arm} material={mat.pole} offset={offset} hide={() => dayFactor() > 0.35} />
 
       {hills.map((h, i) => (
         <mesh key={i} position={[h.x, 0, h.z]} scale={[h.sx, h.sy, h.sz]}>

@@ -9,6 +9,8 @@ import { Sensors, XrayController, useTyreMaterials } from './Xray'
 import HotLeakScene from './HotLeak'
 import JourneyScene, { CabUnit } from './Journey'
 import CorridorMap from './CorridorMap'
+import Emblem from './Emblem'
+import Garage from './Garage'
 import Wordmark from './Wordmark'
 import { ease, lerp, story, type SectionId } from './store'
 
@@ -48,6 +50,11 @@ const KEYS: { id: SectionId; land: Key; port: Key }[] = [
   { id: 'journey', land: { pos: [-25, 12.5, 27], look: [4.5, 8.5, -7] }, port: { pos: [-36, 32, 48], look: [6, 3, -12] } },
   // Corridor map: the camera flies up above the cloud to the floating map (MAP_CENTER in CorridorMap.tsx)
   { id: 'map', land: { pos: [-9, 96, 14], look: [-7.5, 52, -29] }, port: { pos: [2.5, 175, 38], look: [2.5, 38, -27] } },
+  // Five pillars: the leaf emblem floats where the map was (EMBLEM_CENTER in Emblem.tsx)
+  { id: 'pillars', land: { pos: [-3.5, 61.5, -3], look: [-4.8, 60, -30] }, port: { pos: [4, 62, 15], look: [4, 57.4, -30] } },
+  { id: 'roles', land: { pos: [4, 63, -4], look: [4, 61, -30] }, port: { pos: [4, 64, 12], look: [4, 61, -30] } },
+  // Finale: back on the road at sunrise, truck pulled up at the garage (GARAGE_POS in Garage.tsx)
+  { id: 'finale', land: { pos: [-7.5, 2.1, 12.5], look: [3.8, 2.4, -2] }, port: { pos: [-12, 6.5, 25], look: [2.4, -1.4, -1.5] } },
 ]
 
 function mixKey(out: { pos: THREE.Vector3; look: THREE.Vector3 }, k: Key, t: number) {
@@ -141,6 +148,8 @@ function Scene({ startAt, onReady }: Omit<Props, 'paused'>) {
       <HotLeakScene />
       <JourneyScene />
       <CorridorMap />
+      <Emblem />
+      <Garage />
       <Wordmark startAt={startAt} />
       <CameraRig />
       <ReadySignal onReady={onReady} />

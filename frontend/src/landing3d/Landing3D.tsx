@@ -8,6 +8,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useProgress } from '@react-three/drei'
 import Experience from './Experience'
 import Loader from './Loader'
+import { FinaleSection, PillarsList, RolesSection } from './Finale'
 import { Body, HotLeakPanel, JourneySteps, Kicker, LeakReadout, StorySection, Title } from './StoryCard'
 import { SECTIONS, detectLowPower, story, type SectionId } from './store'
 import LandingPage from '../pages/LandingPage'
@@ -242,6 +243,19 @@ export default function Landing3D() {
           </ul>
           <p className="mt-2 text-xs text-navy-700">{t('l3d.map.note')}</p>
         </StorySection>
+
+        {/* ---------- 7. Five pillars ---------- */}
+        <StorySection id="pillars" height="220vh">
+          <Kicker>{t('l3d.pillars.kicker')}</Kicker>
+          <Title>{t('l3d.pillars.title')}</Title>
+          <PillarsList />
+        </StorySection>
+
+        {/* ---------- 8. Who it's for ---------- */}
+        <RolesSection />
+
+        {/* ---------- 9. Sunrise finale ---------- */}
+        <FinaleSection />
 
         {/* ---------- After the story: regular sections on a solid background ---------- */}
         <div ref={storyEnd} className="relative bg-green-50">

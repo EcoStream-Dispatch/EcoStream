@@ -31,7 +31,7 @@ import { useLang } from '../lib/i18n'
  */
 
 // The five pillars from our logo.
-const PILLARS: { icon: LucideIcon; title: string; text: string; tag: string }[] = [
+export const PILLARS: { icon: LucideIcon; title: string; text: string; tag: string }[] = [
   { icon: MapPin, title: 'Real-Time Tracking', text: 'See where each truck is and how its tyres are doing, live.', tag: 'GPS + 4G' },
   { icon: Fuel, title: 'Fuel Efficiency', text: 'Correct tyre pressure means less rolling resistance and less diesel burnt.', tag: 'Right pressure' },
   { icon: Wrench, title: 'Predictive Maintenance', text: 'Spot a slow leak or a hot tyre early, before it becomes a breakdown.', tag: 'Temperature-corrected' },
@@ -159,6 +159,7 @@ export default function LandingPage({ embedded = false }: { embedded?: boolean }
         )}
 
         {/* ---------- Five pillars ---------- */}
+        {!embedded && (
         <section className="border-y border-green-500/15 bg-white">
           <div className="mx-auto max-w-6xl px-4 py-16 md:py-20">
             <div className="mx-auto mb-12 max-w-2xl text-center">
@@ -187,6 +188,7 @@ export default function LandingPage({ embedded = false }: { embedded?: boolean }
             </ul>
           </div>
         </section>
+        )}
 
         {/* ---------- How it works ---------- */}
         <section id="how-it-works" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16">
@@ -215,6 +217,7 @@ export default function LandingPage({ embedded = false }: { embedded?: boolean }
         </section>
 
         {/* ---------- Portals ---------- */}
+        {!embedded && (
         <section className="bg-white">
           <div className="mx-auto max-w-6xl px-4 py-16 md:py-20">
             <div className="mx-auto mb-12 max-w-2xl text-center">
@@ -252,6 +255,7 @@ export default function LandingPage({ embedded = false }: { embedded?: boolean }
             </ul>
           </div>
         </section>
+        )}
 
         {/* ---------- Hardware ---------- */}
         <section className="mx-auto flex max-w-6xl flex-col items-center gap-10 px-4 py-16 md:flex-row md:py-20">
@@ -286,6 +290,7 @@ export default function LandingPage({ embedded = false }: { embedded?: boolean }
         </section>
 
         {/* ---------- CTA ---------- */}
+        {!embedded && (
         <section className="bg-navy-900 px-4 py-16 text-center text-white md:py-20">
           <div className="mx-auto max-w-3xl">
             <p className="font-heading text-xs font-bold uppercase tracking-[0.2em] text-green-300">Prototype</p>
@@ -301,6 +306,7 @@ export default function LandingPage({ embedded = false }: { embedded?: boolean }
             </Link>
           </div>
         </section>
+        )}
       </main>
 
       <Footer />

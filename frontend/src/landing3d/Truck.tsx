@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { RoundedBox } from '@react-three/drei'
 import * as THREE from 'three'
+import { driveFactor } from './store'
 
 /*
  * A stylised generic Indian cargo truck, built from three.js primitives (no model files).
@@ -173,12 +174,14 @@ export default function Truck({ speed = 8, materials, tyreMaterials, children }:
   const body = useRef<THREE.Group>(null)
 
   useFrame((state, dt) => {
-    spin.current += speed * Math.min(dt, 0.05)
+    const v = speed * driveFactor()
+    spin.current += v * Math.min(dt, 0.05)
     // A little suspension bounce while driving
     if (body.current) {
       const t = state.clock.elapsedTime
-      body.current.position.y = speed > 0 ? Math.sin(t * 9) * 0.012 + Math.sin(t * 2.3) * 0.008 : 0
-      body.current.rotation.z = speed > 0 ? Math.sin(t * 1.7) * 0.004 : 0
+      const k = v / Math.max(speed, 0.001)
+      body.current.position.y = (Math.sin(t * 9) * 0.012 + Math.sin(t * 2.3) * 0.008) * k
+      body.current.rotation.z = Math.sin(t * 1.7) * 0.004 * k
     }
   })
 

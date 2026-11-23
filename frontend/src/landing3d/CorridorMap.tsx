@@ -217,7 +217,7 @@ export default function CorridorMap() {
 
   useFrame((state) => {
     const p = story.progress.map
-    const show = ease(p, 0.0, 0.18) * (1 - ease(story.progress.finale, 0.0, 0.25))
+    const show = ease(p, 0.0, 0.18) * (1 - ease(story.progress.pillars, 0.0, 0.2))
     if (group.current) {
       group.current.visible = show > 0.001
       group.current.position.set(MAP_CENTER.x, MAP_CENTER.y - (1 - show) * 6, MAP_CENTER.z)

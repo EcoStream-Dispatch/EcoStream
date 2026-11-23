@@ -5,7 +5,7 @@
  */
 
 /** Story sections, top to bottom. Each one has a progress value from 0 to 1. */
-export const SECTIONS = ['hero', 'xray', 'leak', 'hotleak', 'journey', 'map', 'finale'] as const
+export const SECTIONS = ['hero', 'xray', 'leak', 'hotleak', 'journey', 'map', 'pillars', 'roles', 'finale'] as const
 export type SectionId = (typeof SECTIONS)[number]
 
 export const story = {
@@ -121,4 +121,14 @@ export function hotLeakAt(h: number): { hot: HotLeakTyre; leak: HotLeakTyre; min
     // slow_leak needs a clear downward slope over at least ~10-15 min of readings (api/alert_logic.py)
     alert: hours >= 0.25,
   }
+}
+
+/** 1 while driving, easing to 0 as the truck pulls up at the garage in the finale. */
+export function driveFactor(): number {
+  return 1 - ease(story.progress.finale, 0.1, 0.55)
+}
+
+/** 0 = golden evening, 1 = bright morning (the finale's sunrise). */
+export function dayFactor(): number {
+  return ease(story.progress.finale, 0.0, 0.6)
 }
