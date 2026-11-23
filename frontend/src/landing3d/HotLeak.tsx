@@ -64,7 +64,8 @@ function ShowTyre({ kind }: { kind: 'hot' | 'leak' }) {
     ringMat.uniforms.uColor.value.copy(alarm ? amber : green)
     ringMat.uniforms.uAlpha.value = ease(story.progress.hotleak, 0.04, 0.14) * (1 - ease(story.progress.journey, 0.0, 0.15))
     if (label.current) {
-      label.current.style.opacity = String(ringMat.uniforms.uAlpha.value)
+      // Phones: the card below already shows both tyres' numbers, so keep the tyres clear
+      label.current.style.opacity = window.innerWidth < 640 ? '0' : String(ringMat.uniforms.uAlpha.value)
       label.current.dataset.state = alarm ? 'alert' : 'ok'
       const g = label.current.querySelector<HTMLElement>('[data-g]')
       const c = label.current.querySelector<HTMLElement>('[data-c]')

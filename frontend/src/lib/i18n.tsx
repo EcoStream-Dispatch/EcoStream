@@ -85,6 +85,13 @@ const en = {
   'l3d.journey.s2': '4G mobile network',
   'l3d.journey.s3': 'EcoStream cloud checks the reading',
   'l3d.journey.s4': "Alert on the owner's phone",
+  'l3d.map.kicker': 'Chennai · Krishnagiri · Salem · Namakkal',
+  'l3d.map.title': 'Every truck. Every garage. One map.',
+  'l3d.map.body': "Our first pilot is planned on this corridor. When a tyre needs help, EcoStream finds the nearest verified garage that's open now and shows the way.",
+  'l3d.map.trucks': 'Trucks',
+  'l3d.map.attention': 'Needs a garage',
+  'l3d.map.garages': 'Verified garages (demo)',
+  'l3d.map.note': 'Real town positions, demo trucks and garages. Distance is straight-line, like in the app.',
   // ---- Owner app (first draft translations below; native review needed) ----
   'nav.fleet': 'Fleet',
   'nav.alerts': 'Alerts',

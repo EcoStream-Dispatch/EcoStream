@@ -222,6 +222,27 @@ export default function Landing3D() {
           <JourneySteps />
         </StorySection>
 
+        {/* ---------- 6. Corridor map ---------- */}
+        <StorySection id="map" height="260vh">
+          <Kicker>{t('l3d.map.kicker')}</Kicker>
+          <Title>{t('l3d.map.title')}</Title>
+          <div className="hidden md:block">
+            <Body>{t('l3d.map.body')}</Body>
+          </div>
+          <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-xs font-semibold text-navy-900">
+            <li className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-sm bg-white ring-1 ring-navy-900/30" aria-hidden /> {t('l3d.map.trucks')}
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-sm bg-warning" aria-hidden /> {t('l3d.map.attention')}
+            </li>
+            <li className="flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-full bg-green-500" aria-hidden /> {t('l3d.map.garages')}
+            </li>
+          </ul>
+          <p className="mt-2 text-xs text-navy-700">{t('l3d.map.note')}</p>
+        </StorySection>
+
         {/* ---------- After the story: regular sections on a solid background ---------- */}
         <div ref={storyEnd} className="relative bg-green-50">
           <LandingPage embedded />
