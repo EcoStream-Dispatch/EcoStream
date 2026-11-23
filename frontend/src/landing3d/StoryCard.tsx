@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useLang } from '../lib/i18n'
-import { journeyStep } from './Journey'
-import { DEMO_LEAK_PSI_PER_H, DEMO_RECOMMENDED_PSI, heatNow, heatState, hotLeakAt, leakAt, story, type SectionId } from './store'
+import { DEMO_LEAK_PSI_PER_H, DEMO_RECOMMENDED_PSI, heatNow, heatState, hotLeakAt, journeyStep, leakAt, story, type SectionId } from './store'
 
 /**
  * One story section: tall (so the 3D scene has scroll room) with a sticky text card.
@@ -51,10 +50,11 @@ export function Body({ children }: { children: ReactNode }) {
 }
 
 /** Live readout for the slow-leak scene: corrected pressure, rate and the countdown. */
-export function LeakReadout() {
+export function LeakReadout({ fixed }: { fixed?: number } = {}) {
   const { t } = useLang()
-  const [v, setV] = useState(() => leakAt(0))
+  const [v, setV] = useState(() => leakAt(fixed ?? 0))
   useEffect(() => {
+    if (fixed !== undefined) return
     let raf = 0
     let last = 0
     const tick = (now: number) => {
@@ -66,7 +66,7 @@ export function LeakReadout() {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [])
+  }, [fixed])
   const h = Math.floor(v.hoursLeft)
   const m = Math.round((v.hoursLeft - h) * 60)
 
@@ -116,7 +116,7 @@ function MiniChart({ kind, h }: { kind: 'hot' | 'leak'; h: number }) {
 }
 
 /** Drag-to-heat slider + live comparison for the "hot is not a leak" scene. */
-export function HotLeakPanel() {
+export function HotLeakPanel({ staticMode = false }: { staticMode?: boolean } = {}) {
   const { t } = useLang()
   const [h, setH] = useState(0)
   const [touched, setTouched] = useState(false)
@@ -160,7 +160,7 @@ export function HotLeakPanel() {
           aria-label={t('l3d.hot.slider')}
         />
       </label>
-      {!touched && <p className="-mt-1 text-xs text-navy-700">{t('l3d.hot.hint')}</p>}
+      {!touched && <p className="-mt-1 text-xs text-navy-700">{t(staticMode ? 'l3d.hot.hintStatic' : 'l3d.hot.hint')}</p>}
       <div className="mt-2 grid grid-cols-2 gap-2">
         {(['hot', 'leak'] as const).map((k) => {
           const alarm = k === 'leak' && v.alert

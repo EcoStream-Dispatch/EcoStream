@@ -1,6 +1,6 @@
 import { Suspense, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { AdaptiveDpr } from '@react-three/drei'
+import { AdaptiveDpr, Preload } from '@react-three/drei'
 import { Bloom, EffectComposer, SMAA, Vignette } from '@react-three/postprocessing'
 import * as THREE from 'three'
 import World from './World'
@@ -161,7 +161,7 @@ export default function Experience({ startAt, onReady, paused }: Props) {
   const low = story.lowPower
   return (
     <Canvas
-      shadows
+      shadows={!low}
       frameloop={paused ? 'never' : 'always'}
       dpr={low ? [1, 1.5] : [1, 2]}
       // Desktop uses SMAA in the effect pass; phones skip effects and use the cheap built-in AA.
@@ -174,6 +174,8 @@ export default function Experience({ startAt, onReady, paused }: Props) {
     >
       <Suspense fallback={null}>
         <Scene startAt={startAt} onReady={onReady} />
+        {/* Compile every scene's shaders up front (behind the loader), so scrolling doesn't stutter later */}
+        <Preload all />
         <AdaptiveDpr pixelated={false} />
         {!low && (
           <EffectComposer multisampling={0}>

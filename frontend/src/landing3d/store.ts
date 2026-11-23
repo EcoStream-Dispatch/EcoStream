@@ -132,3 +132,8 @@ export function driveFactor(): number {
 export function dayFactor(): number {
   return ease(story.progress.finale, 0.0, 0.6)
 }
+
+/** 0..1 of each step being reached, for the card's step list. */
+export function journeyStep(p: number): number {
+  return Math.min(4, Math.floor(ease(p, 0.08, 0.8) * 4.999))
+}

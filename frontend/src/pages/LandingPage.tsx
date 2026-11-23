@@ -23,6 +23,7 @@ import Wordmark from '../components/Wordmark'
 import LanguageSwitch from '../components/LanguageSwitch'
 import { asset } from '../lib/asset'
 import { useLang } from '../lib/i18n'
+import StaticStory from '../landing3d/StaticStory'
 
 /*
  * Public landing page - layout from the Stitch screen "EcoStream Fleet Landing Page"
@@ -157,6 +158,9 @@ export default function LandingPage({ embedded = false }: { embedded?: boolean }
           </div>
         </section>
         )}
+
+        {/* Reduced motion / no WebGL: the 3D page's story, as plain sections */}
+        {!embedded && <StaticStory />}
 
         {/* ---------- Five pillars ---------- */}
         {!embedded && (

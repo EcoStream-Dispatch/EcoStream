@@ -20,10 +20,6 @@ export const JOURNEY = {
   phone: new THREE.Vector3(11, 8.5, 4),
 }
 
-/** 0..1 of each step being reached, for the card's step list. */
-export function journeyStep(p: number): number {
-  return Math.min(4, Math.floor(ease(p, 0.08, 0.8) * 4.999))
-}
 
 const streamVertex = /* glsl */ `
   varying float vU;

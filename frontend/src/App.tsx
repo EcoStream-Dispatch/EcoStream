@@ -26,7 +26,9 @@ const Landing3D = lazy(() => import('./landing3d/Landing3D'))
 /** 3D landing when the browser can draw it and the user hasn't asked for less motion. */
 function HomeRoute() {
   const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  if (reduced || !hasWebGL()) return <LandingPage />
+  // "?static" shows the calm version on purpose (handy for checking it)
+  const forced = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('static')
+  if (reduced || forced || !hasWebGL()) return <LandingPage />
   return (
     <Suspense fallback={<Loader done={false} />}>
       <Landing3D />

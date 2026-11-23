@@ -69,6 +69,8 @@ const en = {
   'l3d.hot.body': "Tyres heat up as you drive, and the gauge pressure rises with them. EcoStream corrects every reading to 20 °C. If the corrected pressure stays flat, it's just heat. If it falls, air is leaking.",
   'l3d.hot.slider': 'Drive and heat the tyres',
   'l3d.hot.hint': 'Drag, or keep scrolling.',
+  'l3d.hot.hintStatic': 'Drag the slider to drive and heat the tyres.',
+  'l3d.static.kicker': 'How it works, in detail',
   'l3d.hot.hot': 'Hot tyre',
   'l3d.hot.leak': 'Leaking tyre',
   'l3d.hot.gauge': 'Gauge',
