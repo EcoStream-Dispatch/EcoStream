@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { BadgeCheck, Disc3, Gauge, Lock, LogOut, Navigation, Phone, Siren, Thermometer, Volume2, Wrench, type LucideIcon } from 'lucide-react'
-import { getAlerts, getNearestGarages, getTrucks } from '../services/api'
+import { BadgeCheck, Disc3, Gauge, Lock, LogOut, Mountain, Navigation, Phone, Siren, Star, Thermometer, UserRound, Volume2, Wrench, X, type LucideIcon } from 'lucide-react'
+import { getAlerts, getDrivers, getNearestGarages, getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import { LiveProvider, useLiveEvents, useThrottled } from '../services/live'
 import { useAuth } from '../auth/AuthProvider'
@@ -17,7 +17,9 @@ import { timeAgo } from '../lib/format'
 import { asset } from '../lib/asset'
 import { kpaToBar, kpaToPsi } from '../lib/units'
 import { USING_MOCK_DATA } from '../services/api'
-import type { Alert, TruckSummary } from '../types'
+import { AVAILABILITY } from '../lib/drivers'
+import { hoursUntilUnsafe } from '../lib/alerts'
+import type { Alert, Driver, TruckSummary } from '../types'
 
 /**
  * Driver "Live cockpit" (Stitch: Driver Portal, redrawn in the light brand; App Screens sheet:
@@ -51,10 +53,31 @@ function Cockpit() {
   })
   useLiveEvents({ onReading: refresh, onAlert: refresh })
 
+  const driversQ = useApi(getDrivers, [])
+
   const truck = trucksQ.data?.[0]
   const alert = (alertsQ.data ?? [])
     .filter((a) => a.truck_id === truck?.id)
-    .sort((a, b) => RANK[b.severity] - RANK[a.severity])[0]
+    .sort(
+      (a, b) =>
+        RANK[b.severity] - RANK[a.severity] ||
+        (hoursUntilUnsafe(a, truck) ?? Infinity) - (hoursUntilUnsafe(b, truck) ?? Infinity),
+    )[0]
+  const driver = driversQ.data?.find((d) => d.truck_id === truck?.id)
+
+  // Full-screen alert: opens by itself for a critical alert the driver hasn't dismissed yet.
+  const [dismissed, setDismissed] = useState<string[]>(loadDismissed)
+  const [preview, setPreview] = useState(false)
+  const autoOpen = alert?.severity === 'critical' && !dismissed.includes(alert.id)
+  const showOverlay = !!alert && !!truck && (autoOpen || preview)
+  function closeOverlay() {
+    if (alert) {
+      const next = [...dismissed, alert.id]
+      setDismissed(next)
+      saveDismissed(next)
+    }
+    setPreview(false)
+  }
 
   return (
     <div className="min-h-screen bg-green-50">
@@ -117,7 +140,13 @@ function Cockpit() {
             </div>
 
             {/* Navy banner: the one thing to do now, with voice */}
-            {alert ? <AlertBanner alert={alert} truck={truck} /> : <AllGood />}
+            {alert ? <AlertBanner alert={alert} truck={truck} onFullScreen={() => setPreview(true)} /> : <AllGood />}
+
+            {/* Driver + route warnings */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <DriverCard driver={driver} truck={truck} />
+              <RouteWarnings />
+            </div>
 
             {/* Sensor cards */}
             <SensorCards truck={truck} />
@@ -134,7 +163,199 @@ function Cockpit() {
           </>
         )}
       </main>
+      {showOverlay && <AlertOverlay alert={alert!} truck={truck!} onClose={closeOverlay} />}
     </div>
+  )
+}
+
+// ---------- Dismissed full-screen alerts (this browser tab only) ----------
+const DISMISSED_KEY = 'ecostream.driver.dismissed'
+function loadDismissed(): string[] {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(DISMISSED_KEY) ?? '[]')
+    return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+function saveDismissed(ids: string[]) {
+  try {
+    sessionStorage.setItem(DISMISSED_KEY, JSON.stringify(ids))
+  } catch {
+    /* private mode: ignore */
+  }
+}
+
+/** What to tell the driver, in English and Tamil (Tamil: first draft, needs native review). */
+function driverMessage(alert: Alert, truck: TruckSummary): { en: string; ta: string } {
+  const pos = truck.tyres.find((t) => t.id === alert.tyre_id)?.position
+  const where = pos ? positionName(pos) : 'a tyre'
+  const offline = alert.type === 'sensor_offline'
+  const action =
+    alert.severity === 'critical'
+      ? 'Stop safely now.'
+      : offline
+        ? 'Check the tyre at your next stop.'
+        : 'Drive slowly to the next garage.'
+  const ta =
+    alert.severity === 'critical'
+      ? 'டயரில் பிரச்சனை. உடனே பாதுகாப்பாக நிறுத்துங்கள்.'
+      : offline
+        ? 'டயர் சென்சார் தகவல் வரவில்லை. அடுத்த நிறுத்தத்தில் டயரைச் சரிபாருங்கள்.'
+        : 'டயரில் பிரச்சனை. மெதுவாக அடுத்த கேரேஜுக்குச் செல்லுங்கள்.'
+  return { en: `${ALERT_TITLE[alert.type]} on ${where}. ${action}`, ta }
+}
+
+/** Read the message aloud: Tamil first, then English. */
+function useVoice(en: string, ta: string) {
+  const [speaking, setSpeaking] = useState(false)
+  useEffect(() => () => {
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel()
+  }, [])
+  function play() {
+    if (!('speechSynthesis' in window)) return
+    window.speechSynthesis.cancel()
+    const ta1 = new SpeechSynthesisUtterance(ta)
+    ta1.lang = 'ta-IN'
+    const en1 = new SpeechSynthesisUtterance(en)
+    en1.lang = 'en-IN'
+    en1.onend = () => setSpeaking(false)
+    en1.onerror = () => setSpeaking(false)
+    setSpeaking(true)
+    window.speechSynthesis.speak(ta1)
+    window.speechSynthesis.speak(en1)
+  }
+  return { speaking, play, supported: typeof window !== 'undefined' && 'speechSynthesis' in window }
+}
+
+/** Full-screen alert (Stitch brief screen 8): one icon, one sentence, three big buttons. Navy for night use. */
+function AlertOverlay({ alert, truck, onClose }: { alert: Alert; truck: TruckSummary; onClose: () => void }) {
+  const { en, ta } = driverMessage(alert, truck)
+  const { speaking, play } = useVoice(en, ta)
+  const { icon: Icon } = STATUS_STYLE[alert.severity]
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
+
+  useEffect(() => {
+    closeRef.current?.focus()
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCloseRef.current()
+    window.addEventListener('keydown', onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prev
+    }
+  }, [])
+
+  function toGarage() {
+    onClose()
+    setTimeout(() => document.getElementById('next-garage')?.scrollIntoView({ behavior: 'smooth' }), 50)
+  }
+
+  return (
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="overlay-title"
+      className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-navy-900 px-5 py-8 text-white"
+    >
+      <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center text-center">
+        <span
+          className={`flex h-24 w-24 items-center justify-center rounded-full ${
+            alert.severity === 'critical' ? 'animate-pulse bg-critical' : 'bg-warning text-navy-900'
+          }`}
+        >
+          <Icon size={52} aria-hidden />
+        </span>
+        <p className="mt-4 font-heading text-sm font-bold uppercase tracking-widest text-white/70">{truck.reg_no}</p>
+        <h1 id="overlay-title" className="mt-2 text-3xl font-extrabold leading-tight text-white">
+          {en}
+        </h1>
+        <p lang="ta" className="mt-3 text-xl text-white/85">
+          {ta}
+        </p>
+        <div className="mt-8 grid w-full gap-3">
+          <button
+            type="button"
+            onClick={play}
+            className="inline-flex min-h-[60px] items-center justify-center gap-2 rounded-xl bg-white text-lg font-semibold text-navy-900 hover:bg-green-50"
+          >
+            <Volume2 size={24} aria-hidden /> {speaking ? 'Playing…' : 'Play voice'}
+          </button>
+          <button
+            type="button"
+            onClick={toGarage}
+            className="inline-flex min-h-[60px] items-center justify-center gap-2 rounded-xl bg-green-300 text-lg font-semibold text-navy-900 hover:bg-white"
+          >
+            <Navigation size={24} aria-hidden /> Nearest garage
+          </button>
+          <button
+            ref={closeRef}
+            type="button"
+            onClick={onClose}
+            className="inline-flex min-h-[60px] items-center justify-center gap-2 rounded-xl border-2 border-white/40 text-lg font-semibold text-white hover:bg-white/10"
+          >
+            <X size={24} aria-hidden /> Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Who is driving. Ratings come with the Pro plan, so they say "coming soon". */
+function DriverCard({ driver, truck }: { driver?: Driver; truck: TruckSummary }) {
+  return (
+    <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-green-500/15">
+      <div className="flex items-center gap-4">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-navy-900 text-green-300">
+          <UserRound size={24} aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <p className="font-heading text-[11px] font-bold uppercase tracking-wider text-navy-700">Driver</p>
+          <p className="truncate text-lg font-bold">{driver ? driver.name : 'Not assigned yet'}</p>
+        </div>
+        {driver && (
+          <span className={`ml-auto shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${AVAILABILITY[driver.availability].cls}`}>
+            {AVAILABILITY[driver.availability].label}
+          </span>
+        )}
+      </div>
+      <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
+        <div className="rounded-lg bg-gray-50 p-2">
+          <dt className="text-xs text-navy-700">Truck</dt>
+          <dd className="font-semibold">{truck.reg_no}</dd>
+        </div>
+        <div className="rounded-lg bg-gray-50 p-2">
+          <dt className="text-xs text-navy-700">Rating</dt>
+          <dd className="flex items-center gap-1 font-semibold">
+            <Star size={14} aria-hidden /> {driver?.rating != null ? `${driver.rating.toFixed(1)} / 5` : 'Coming soon'}
+          </dd>
+        </div>
+      </dl>
+    </section>
+  )
+}
+
+/** Ghat / dead-zone warnings for the route. Nothing is mapped yet, so we say that. */
+function RouteWarnings() {
+  return (
+    <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-green-500/15">
+      <div className="flex items-center gap-4">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-green-50 text-green-700">
+          <Mountain size={24} aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <p className="font-heading text-[11px] font-bold uppercase tracking-wider text-navy-700">Ghat and no-signal areas</p>
+          <p className="text-lg font-bold">No mapped warnings on this route yet</p>
+        </div>
+      </div>
+      <p className="mt-3 text-sm text-navy-700">
+        Steep ghat sections and places with no mobile signal will show here before you reach them.
+      </p>
+    </section>
   )
 }
 
@@ -152,39 +373,10 @@ function AllGood() {
 }
 
 /** Big, plain alert for the driver. Navy so it's readable at night; Tamil line under English. */
-function AlertBanner({ alert, truck }: { alert: Alert; truck: TruckSummary }) {
-  const pos = truck.tyres.find((t) => t.id === alert.tyre_id)?.position
-  const where = pos ? positionName(pos) : 'a tyre'
-  const offline = alert.type === 'sensor_offline'
-  const action =
-    alert.severity === 'critical'
-      ? 'Stop safely now.'
-      : offline
-        ? 'Check the tyre at your next stop.'
-        : 'Drive slowly to the next garage.'
-  const en = `${ALERT_TITLE[alert.type]} on ${where}. ${action}`
-  // Tamil: first draft, needs native review (see src/lib/i18n.tsx)
-  const ta =
-    alert.severity === 'critical'
-      ? 'டயரில் பிரச்சனை. உடனே பாதுகாப்பாக நிறுத்துங்கள்.'
-      : offline
-        ? 'டயர் சென்சார் தகவல் வரவில்லை. அடுத்த நிறுத்தத்தில் டயரைச் சரிபாருங்கள்.'
-        : 'டயரில் பிரச்சனை. மெதுவாக அடுத்த கேரேஜுக்குச் செல்லுங்கள்.'
+function AlertBanner({ alert, truck, onFullScreen }: { alert: Alert; truck: TruckSummary; onFullScreen: () => void }) {
+  const { en, ta } = driverMessage(alert, truck)
+  const { speaking, play } = useVoice(en, ta)
   const { icon: Icon } = STATUS_STYLE[alert.severity]
-  const [speaking, setSpeaking] = useState(false)
-
-  function playVoice() {
-    if (!('speechSynthesis' in window)) return
-    window.speechSynthesis.cancel()
-    const ta1 = new SpeechSynthesisUtterance(ta)
-    ta1.lang = 'ta-IN'
-    const en1 = new SpeechSynthesisUtterance(en)
-    en1.lang = 'en-IN'
-    en1.onend = () => setSpeaking(false)
-    setSpeaking(true)
-    window.speechSynthesis.speak(ta1)
-    window.speechSynthesis.speak(en1)
-  }
 
   return (
     <div className="rounded-2xl bg-navy-900 p-5 text-white shadow-lg md:p-6">
@@ -205,7 +397,7 @@ function AlertBanner({ alert, truck }: { alert: Alert; truck: TruckSummary }) {
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <button
           type="button"
-          onClick={playVoice}
+          onClick={play}
           className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-white font-semibold text-navy-900 hover:bg-green-50"
         >
           <Volume2 size={20} aria-hidden /> {speaking ? 'Playing…' : 'Play voice'}
@@ -223,6 +415,13 @@ function AlertBanner({ alert, truck }: { alert: Alert; truck: TruckSummary }) {
           <Phone size={20} aria-hidden /> Call owner (soon)
         </span>
       </div>
+      <button
+        type="button"
+        onClick={onFullScreen}
+        className="mt-3 min-h-[44px] text-sm font-semibold text-white/80 underline underline-offset-2 hover:text-white"
+      >
+        Show full screen
+      </button>
     </div>
   )
 }
