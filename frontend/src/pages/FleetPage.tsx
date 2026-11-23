@@ -80,7 +80,7 @@ export default function FleetPage() {
 
       {trucks && trucks.length > 0 && (
         <>
-          <div className="grid gap-4 lg:grid-cols-12">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
             <div className="lg:col-span-4">
               <FleetStatus trucks={trucks} />
             </div>
@@ -89,11 +89,11 @@ export default function FleetPage() {
             </div>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-12">
-            <section className="lg:col-span-5">
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
+            <section className="min-w-0 lg:col-span-5">
               <MaintenanceAlerts alerts={alerts} trucks={trucks} />
             </section>
-            <section className="lg:col-span-7" aria-labelledby="trucks-heading">
+            <section className="min-w-0 lg:col-span-7" aria-labelledby="trucks-heading">
               <h2 id="trucks-heading" className="mb-3 text-lg font-bold">
                 My trucks
               </h2>

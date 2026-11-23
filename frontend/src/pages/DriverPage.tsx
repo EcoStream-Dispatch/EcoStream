@@ -99,7 +99,7 @@ function Cockpit() {
               {alert ? <AlertBanner alert={alert} truck={truck} /> : <AllGood />}
             </div>
 
-            <div className="mt-4 grid gap-4 md:grid-cols-12">
+            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-12">
               <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-green-500/15 md:col-span-5">
                 <h2 className="text-lg font-bold">Tyres</h2>
                 <TyreBoard truck={truck} />
@@ -143,8 +143,21 @@ function AllGood() {
 function AlertBanner({ alert, truck }: { alert: Alert; truck: TruckSummary }) {
   const pos = truck.tyres.find((t) => t.id === alert.tyre_id)?.position
   const where = pos ? positionName(pos) : 'a tyre'
-  const en = `${ALERT_TITLE[alert.type]} on ${where}. ${alert.severity === 'critical' ? 'Stop safely now.' : 'Drive slowly to the next garage.'}`
-  const ta = alert.severity === 'critical' ? 'டயரில் பிரச்சனை. உடனே பாதுகாப்பாக நிறுத்துங்கள்.' : 'டயரில் பிரச்சனை. மெதுவாக அடுத்த கேரேஜுக்குச் செல்லுங்கள்.'
+  const offline = alert.type === 'sensor_offline'
+  const action =
+    alert.severity === 'critical'
+      ? 'Stop safely now.'
+      : offline
+        ? 'Check the tyre at your next stop.'
+        : 'Drive slowly to the next garage.'
+  const en = `${ALERT_TITLE[alert.type]} on ${where}. ${action}`
+  // Tamil: first draft, needs native review (see src/lib/i18n.tsx)
+  const ta =
+    alert.severity === 'critical'
+      ? 'டயரில் பிரச்சனை. உடனே பாதுகாப்பாக நிறுத்துங்கள்.'
+      : offline
+        ? 'டயர் சென்சார் தகவல் வரவில்லை. அடுத்த நிறுத்தத்தில் டயரைச் சரிபாருங்கள்.'
+        : 'டயரில் பிரச்சனை. மெதுவாக அடுத்த கேரேஜுக்குச் செல்லுங்கள்.'
   const { icon: Icon } = STATUS_STYLE[alert.severity]
   const [speaking, setSpeaking] = useState(false)
 
@@ -247,7 +260,7 @@ function NextGarage({ truck }: { truck: TruckSummary }) {
       {data && !g && <p className="mt-2 text-sm text-navy-700">No open tyre garage found nearby.</p>}
       {g && (
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 basis-full sm:basis-auto sm:flex-1">
             <p className="font-semibold">{g.name}</p>
             <p className="text-sm text-navy-700">
               <MapPin size={14} className="mr-1 inline" aria-hidden />
@@ -258,13 +271,13 @@ function NextGarage({ truck }: { truck: TruckSummary }) {
             href={`https://www.google.com/maps/dir/?api=1&destination=${g.lat},${g.lon}`}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex min-h-[48px] items-center gap-2 rounded-xl bg-green-700 px-4 font-semibold text-white hover:bg-green-500"
+            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl bg-green-700 px-4 font-semibold text-white hover:bg-green-500 sm:flex-none"
           >
             <Navigation size={18} aria-hidden /> Navigate
           </a>
           <a
             href={`tel:${g.phone.replace(/\s/g, '')}`}
-            className="inline-flex min-h-[48px] items-center gap-2 rounded-xl border-2 border-green-700 px-4 font-semibold text-green-700 hover:bg-green-50"
+            className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-xl border-2 border-green-700 px-4 font-semibold text-green-700 hover:bg-green-50 sm:flex-none"
           >
             <Phone size={18} aria-hidden /> Call
           </a>

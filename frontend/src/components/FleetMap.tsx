@@ -10,7 +10,7 @@ import type { TruckSummary } from '../types'
  */
 
 // Box the drawing covers (lat/lon). Trucks outside it are pinned to the edge.
-const BOX = { minLat: 11.0, maxLat: 13.3, minLon: 77.8, maxLon: 80.5 }
+const BOX = { minLat: 11.0, maxLat: 13.3, minLon: 77.8, maxLon: 81.0 }
 const W = 600
 const H = 340
 
