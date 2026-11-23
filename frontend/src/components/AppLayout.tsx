@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { BellRing, LogOut, Tag, Truck } from 'lucide-react'
+import { BellRing, CircleUserRound, LogOut, Tag, Truck, Users } from 'lucide-react'
 import Wordmark from './Wordmark'
 import { USING_MOCK_DATA } from '../services/api'
 import { LiveProvider, useLiveStatus } from '../services/live'
@@ -12,11 +12,15 @@ import LanguageSwitch from './LanguageSwitch'
  * Phones: logo bar on top, tab bar at the bottom (easy to reach with a thumb).
  * Wider screens: links move into the top bar.
  */
+// `phone: false` = sidebar only; on phones it is reached from another page (Plans from Profile).
 const NAV = [
-  { to: '/fleet', label: 'Fleet', icon: Truck },
-  { to: '/alerts', label: 'Alerts', icon: BellRing },
-  { to: '/plans', label: 'Plans', icon: Tag },
+  { to: '/fleet', label: 'Fleet', icon: Truck, phone: true },
+  { to: '/alerts', label: 'Alerts', icon: BellRing, phone: true },
+  { to: '/drivers', label: 'Drivers', icon: Users, phone: true },
+  { to: '/plans', label: 'Plans', icon: Tag, phone: false },
+  { to: '/profile', label: 'Profile', icon: CircleUserRound, phone: true },
 ]
+const PHONE_NAV = NAV.filter((n) => n.phone)
 
 export default function AppLayout() {
   return (
@@ -132,15 +136,15 @@ function Shell() {
 
       {/* ---------- Phone tab bar ---------- */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-3 border-t border-gray-200 bg-white md:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-gray-200 bg-white md:hidden"
         aria-label="Main"
       >
-        {NAV.map(({ to, label, icon: Icon }) => (
+        {PHONE_NAV.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
             className={({ isActive }) =>
-              `flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-xs font-semibold ${
+              `flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-0.5 text-xs font-semibold ${
                 isActive ? 'text-green-700' : 'text-navy-700'
               }`
             }

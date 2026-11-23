@@ -36,6 +36,16 @@ export type TruckStatus = 'ok' | 'warning' | 'critical'
 
 // ---------- Database rows (spec section 3) ----------
 
+export interface FleetOwner {
+  id: string
+  name: string
+  phone: string | null
+  company: string | null
+  created_at: string
+  /** NEW, optional: GST number. Not in the database yet (mock only). */
+  gst_no?: string | null
+}
+
 export interface Truck {
   id: string
   owner_id: string
@@ -149,4 +159,23 @@ export interface Booking {
   tyre_id: string
   garage: NearbyGarage
   created_at: string
+}
+
+/** Driver availability on the Drivers page. */
+export type DriverAvailability = 'available' | 'on_duty' | 'off_duty'
+
+/**
+ * A driver working for the owner. NEW: there is no drivers table yet, so this is
+ * mock-only (docs/FRONTEND_DATA_NEEDS.md).
+ */
+export interface Driver {
+  id: string
+  owner_id: string
+  name: string
+  phone: string
+  availability: DriverAvailability
+  /** Truck the driver is assigned to, or null */
+  truck_id: string | null
+  /** 1-5 stars. Comes with the Pro plan's driver ratings; null until then. */
+  rating: number | null
 }

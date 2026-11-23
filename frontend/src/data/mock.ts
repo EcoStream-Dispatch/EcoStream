@@ -15,7 +15,7 @@
  *                        its corrected pressure stays flat (spec acceptance criterion 3)
  *                        Plus one old, acknowledged critical alert so "Closed" isn't empty.
  */
-import type { Alert, Booking, Garage, NearbyGarage, Reading, Truck, TruckStatus, Tyre, TyreWithStatus, TruckSummary } from '../types'
+import type { Alert, Booking, Driver, FleetOwner, Garage, NearbyGarage, Reading, Truck, TruckStatus, Tyre, TyreWithStatus, TruckSummary } from '../types'
 import { haversineKm, isOpenNow } from '../lib/geo'
 import { gaugeKpaFromCorrected, psiToKpa } from '../lib/units'
 import { positionsFor } from '../lib/tyreLayout'
@@ -379,4 +379,54 @@ export function mockBookGarage(alert: Alert, garage: NearbyGarage): Booking {
 export function mockGetBooking(id: string): Booking | null {
   const b = bookings.find((x) => x.id === id)
   return b ? { ...b } : null
+}
+
+// ---------- Owner profile and drivers (demo only: no drivers table, no GST column) ----------
+
+const owner: FleetOwner = {
+  id: OWNER_ID,
+  name: 'Demo Owner',
+  phone: '+91 90000 11111',
+  company: 'Sample Transports (demo)',
+  created_at: '2026-11-01T00:00:00Z',
+  gst_no: '33ABCDE1234F1Z5',
+}
+
+const drivers: Driver[] = [
+  { id: 'driver-1', owner_id: OWNER_ID, name: 'Sample Driver 1', phone: '+91 90000 22201', availability: 'on_duty', truck_id: 'truck-1', rating: null },
+  { id: 'driver-2', owner_id: OWNER_ID, name: 'Sample Driver 2', phone: '+91 90000 22202', availability: 'on_duty', truck_id: 'truck-2', rating: null },
+  { id: 'driver-3', owner_id: OWNER_ID, name: 'Sample Driver 3', phone: '+91 90000 22203', availability: 'available', truck_id: null, rating: null },
+  { id: 'driver-4', owner_id: OWNER_ID, name: 'Sample Driver 4', phone: '+91 90000 22204', availability: 'off_duty', truck_id: null, rating: null },
+]
+
+export function mockGetOwner(): FleetOwner {
+  return { ...owner }
+}
+
+export function mockGetDrivers(): Driver[] {
+  return drivers.map((d) => ({ ...d }))
+}
+
+/**
+ * Put a driver on a truck (or take them off with truckId = null).
+ * One driver per truck: whoever was on that truck is taken off.
+ * Assigning makes an available driver on duty; un-assigning makes them available.
+ */
+export function mockAssignDriver(driverId: string, truckId: string | null): Driver[] {
+  const d = drivers.find((x) => x.id === driverId)
+  if (!d) throw new Error('Driver not found')
+  if (truckId) {
+    for (const other of drivers) {
+      if (other.id !== driverId && other.truck_id === truckId) {
+        other.truck_id = null
+        if (other.availability === 'on_duty') other.availability = 'available'
+      }
+    }
+    d.truck_id = truckId
+    if (d.availability === 'available') d.availability = 'on_duty'
+  } else {
+    d.truck_id = null
+    if (d.availability === 'on_duty') d.availability = 'available'
+  }
+  return mockGetDrivers()
 }

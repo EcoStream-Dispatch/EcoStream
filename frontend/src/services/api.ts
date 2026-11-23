@@ -7,10 +7,13 @@
  *   Supabase keys set  -> real FastAPI backend, with the owner's login token
  *   no Supabase keys   -> demo mode: made-up data from src/data/mock.ts
  */
-import type { Alert, Booking, NearbyGarage, Reading, TruckSummary } from '../types'
+import type { Alert, Booking, Driver, FleetOwner, NearbyGarage, Reading, TruckSummary } from '../types'
 import {
   mockAckAlert,
+  mockAssignDriver,
   mockBookGarage,
+  mockGetDrivers,
+  mockGetOwner,
   mockGetBooking,
   mockGetAlerts,
   mockGetNearestGarages,
@@ -130,4 +133,33 @@ export async function bookGarage(alert: Alert, garage: NearbyGarage): Promise<Bo
 export async function getBooking(id: string): Promise<Booking | null> {
   if (USING_MOCK_DATA) return delay(mockGetBooking(id))
   return null
+}
+
+/**
+ * The logged-in owner's profile. No API endpoint: reads `fleet_owners` straight from
+ * Supabase (row-level security lets an owner read only their own row).
+ */
+export async function getOwner(): Promise<FleetOwner | null> {
+  if (USING_MOCK_DATA) return delay(mockGetOwner())
+  const { data: auth } = await supabase!.auth.getUser()
+  if (!auth.user) throw new ApiError('Please log in again.', 401)
+  const { data, error } = await supabase!
+    .from('fleet_owners')
+    .select('id, name, phone, company, created_at')
+    .eq('id', auth.user.id)
+    .maybeSingle()
+  if (error) throw new ApiError(error.message, 500)
+  return data as FleetOwner | null
+}
+
+/** Drivers. NOT CONNECTED YET (no drivers table): null outside demo mode. */
+export async function getDrivers(): Promise<Driver[] | null> {
+  if (USING_MOCK_DATA) return delay(mockGetDrivers())
+  return null
+}
+
+/** Assign a driver to a truck (null = take off truck). Demo mode only for now. */
+export async function assignDriver(driverId: string, truckId: string | null): Promise<Driver[]> {
+  if (USING_MOCK_DATA) return delay(mockAssignDriver(driverId, truckId))
+  throw new ApiError("Drivers aren't connected yet.", 501)
 }
