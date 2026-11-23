@@ -6,6 +6,7 @@ import { LiveProvider, useLiveStatus } from '../services/live'
 import { useAuth } from '../auth/AuthProvider'
 import { asset } from '../lib/asset'
 import LanguageSwitch from './LanguageSwitch'
+import { useLang } from '../lib/i18n'
 
 /*
  * Shell for the owner pages (Fleet, Truck, Alerts).
@@ -14,12 +15,12 @@ import LanguageSwitch from './LanguageSwitch'
  */
 // `phone: false` = sidebar only; on phones it is reached from another page (Plans from Profile).
 const NAV = [
-  { to: '/fleet', label: 'Fleet', icon: Truck, phone: true },
-  { to: '/alerts', label: 'Alerts', icon: BellRing, phone: true },
-  { to: '/drivers', label: 'Drivers', icon: Users, phone: true },
-  { to: '/reports', label: 'Reports', icon: BarChart3, phone: true },
-  { to: '/plans', label: 'Plans', icon: Tag, phone: false },
-  { to: '/profile', label: 'Profile', icon: CircleUserRound, phone: true },
+  { to: '/fleet', label: 'nav.fleet' as const, icon: Truck, phone: true },
+  { to: '/alerts', label: 'nav.alerts' as const, icon: BellRing, phone: true },
+  { to: '/drivers', label: 'nav.drivers' as const, icon: Users, phone: true },
+  { to: '/reports', label: 'nav.reports' as const, icon: BarChart3, phone: true },
+  { to: '/plans', label: 'nav.plans' as const, icon: Tag, phone: false },
+  { to: '/profile', label: 'nav.profile' as const, icon: CircleUserRound, phone: true },
 ]
 const PHONE_NAV = NAV.filter((n) => n.phone)
 
@@ -34,6 +35,7 @@ export default function AppLayout() {
 /** Green dot = live updates connected. Not shown in demo mode. */
 function LiveDot({ dark = false }: { dark?: boolean }) {
   const status = useLiveStatus()
+  const { t } = useLang()
   if (status === 'off') return null
   const live = status === 'live'
   return (
@@ -42,13 +44,14 @@ function LiveDot({ dark = false }: { dark?: boolean }) {
       title={live ? 'Updates appear automatically' : 'Live updates not connected - data may be old'}
     >
       <span className={`h-2 w-2 rounded-full ${live ? 'animate-pulse bg-green-500' : 'bg-gray-400'}`} aria-hidden />
-      {live ? 'Live' : status === 'error' ? 'Not live' : 'Connecting'}
+      {live ? t('app.live') : status === 'error' ? 'Not live' : 'Connecting'}
     </span>
   )
 }
 
 function Shell() {
   const { session, signOut } = useAuth()
+  const { t } = useLang()
   return (
     <div className="flex min-h-screen bg-green-50">
       {/* ---------- Sidebar (tablet / desktop) - layout from the Stitch owner portal ---------- */}
@@ -59,7 +62,7 @@ function Shell() {
             <span className="font-heading text-base font-extrabold uppercase tracking-wide">
               <span className="text-green-300">Eco</span>stream
             </span>
-            <span className="-mt-0.5 font-heading text-[9px] font-bold uppercase tracking-widest text-green-300/80">Owner portal</span>
+            <span className="-mt-0.5 font-heading text-[9px] font-bold uppercase tracking-widest text-green-300/80">{t('app.ownerPortal')}</span>
           </span>
         </Link>
         <nav className="mt-10 flex-1 space-y-1" aria-label="Main">
@@ -73,7 +76,7 @@ function Shell() {
                 }`
               }
             >
-              <Icon size={20} aria-hidden /> {label}
+              <Icon size={20} aria-hidden /> {t(label)}
             </NavLink>
           ))}
         </nav>
@@ -85,7 +88,7 @@ function Shell() {
               className="inline-flex items-center gap-2 text-sm font-semibold text-white/80 hover:text-white"
               title={`Logged in as ${session.user.email ?? session.user.phone ?? ''}`}
             >
-              <LogOut size={18} aria-hidden /> Log out
+              <LogOut size={18} aria-hidden /> {t('nav.logout')}
             </button>
           )}
         </div>
@@ -112,7 +115,7 @@ function Shell() {
                   className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-warning/40"
                   title="This screen shows made-up data, not real trucks"
                 >
-                  Demo data
+                  {t('app.demoData')}
                 </span>
               )}
               {session && (
@@ -122,7 +125,7 @@ function Shell() {
                   title="Log out"
                 >
                   <LogOut size={18} aria-hidden />
-                  <span className="hidden sm:inline">Log out</span>
+                  <span className="hidden sm:inline">{t('nav.logout')}</span>
                 </button>
               )}
             </div>
@@ -151,7 +154,8 @@ function Shell() {
             }
           >
             <Icon size={22} aria-hidden />
-            {label}
+            {/* Tamil/Hindi words are long: keep each tab label inside its own tab */}
+            <span className="block w-full truncate px-0.5 text-center text-[11px] leading-tight">{t(label)}</span>
           </NavLink>
         ))}
       </nav>

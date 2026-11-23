@@ -2,6 +2,7 @@ import { BadgeCheck, CalendarCheck, Phone } from 'lucide-react'
 import { getNearestGarages } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import type { NearbyGarage } from '../types'
+import { useLang } from '../lib/i18n'
 
 interface Props {
   lat: number | null
@@ -18,6 +19,7 @@ interface Props {
  * We have no garage prices yet, so we never show a number: "Price: ask garage".
  */
 export default function GarageList({ lat, lon, onBook, bookingId = null }: Props) {
+  const { t } = useLang()
   const { data, loading, error } = useApi(
     () => (lat == null || lon == null ? Promise.resolve([]) : getNearestGarages(lat, lon, 'tyre')),
     [lat, lon],
@@ -38,14 +40,14 @@ export default function GarageList({ lat, lon, onBook, bookingId = null }: Props
               {g.verified && <BadgeCheck size={16} className="shrink-0 text-green-700" aria-label="Verified" />}
             </p>
             <p className="text-xs text-navy-700">
-              {g.distance_km.toFixed(1)} km away ·{' '}
+              {t('garage.kmAway', { km: g.distance_km.toFixed(1) })} ·{' '}
               <span className="font-semibold text-green-700">
-                {g.open_24x7 ? 'Open 24×7' : `Open now, till ${g.closes}`}
+                {g.open_24x7 ? t('garage.open247') : t('garage.openTill', { t: g.closes ?? '' })}
               </span>
             </p>
             {onBook && (
               <p className="text-xs text-navy-700">
-                {g.phone} · Price: ask garage
+                {g.phone} · {t('garage.price')}
               </p>
             )}
           </div>
@@ -56,7 +58,7 @@ export default function GarageList({ lat, lon, onBook, bookingId = null }: Props
               className="inline-flex min-h-[44px] items-center justify-center gap-1 rounded-lg bg-green-700 px-3 text-sm font-semibold text-white hover:bg-green-500"
               aria-label={`Call ${g.name}, ${g.phone}`}
             >
-              <Phone size={16} aria-hidden /> Call
+              <Phone size={16} aria-hidden /> {t('garage.call')}
             </a>
             {onBook && (
               <button
@@ -65,7 +67,7 @@ export default function GarageList({ lat, lon, onBook, bookingId = null }: Props
                 disabled={bookingId !== null}
                 className="inline-flex min-h-[44px] items-center justify-center gap-1 rounded-lg border-2 border-green-700 px-3 text-sm font-semibold text-green-700 hover:bg-green-50 disabled:opacity-50"
               >
-                <CalendarCheck size={16} aria-hidden /> {bookingId === g.id ? 'Booking…' : 'Book slot'}
+                <CalendarCheck size={16} aria-hidden /> {bookingId === g.id ? t('garage.booking') : t('garage.book')}
               </button>
             )}
           </div>

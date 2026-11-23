@@ -4,6 +4,7 @@ import { assignDriver, getDrivers, getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import { ErrorBox, Loading } from '../components/PageState'
 import { AVAILABILITY } from '../lib/drivers'
+import { useLang } from '../lib/i18n'
 import type { Driver, DriverAvailability } from '../types'
 
 /**
@@ -15,6 +16,7 @@ export default function DriversPage() {
   const driversQ = useApi(getDrivers, [])
   const trucksQ = useApi(getTrucks, [])
   const [saving, setSaving] = useState<string | null>(null)
+  const { t: tr } = useLang()
   const [error, setError] = useState<string | null>(null)
 
   const drivers = driversQ.data
@@ -35,8 +37,8 @@ export default function DriversPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-extrabold md:text-3xl">Drivers</h1>
-      <p className="mt-1 text-navy-700">Who is driving which truck.</p>
+      <h1 className="text-2xl font-extrabold md:text-3xl">{tr('nav.drivers')}</h1>
+      <p className="mt-1 text-navy-700">{tr('drivers.sub')}</p>
 
       {driversQ.loading && !drivers && <Loading what="drivers" />}
       {driversQ.error && <ErrorBox message={driversQ.error} onRetry={driversQ.reload} />}
@@ -52,7 +54,7 @@ export default function DriversPage() {
             {(Object.keys(AVAILABILITY) as DriverAvailability[]).map((a) => (
               <li key={a} className="rounded-xl bg-white p-3 text-center shadow-sm ring-1 ring-gray-200">
                 <p className="font-heading text-3xl font-extrabold">{count(a)}</p>
-                <p className="text-xs font-semibold text-navy-700">{AVAILABILITY[a].label}</p>
+                <p className="text-xs font-semibold text-navy-700">{tr(`drivers.${a}`)}</p>
               </li>
             ))}
           </ul>
@@ -65,23 +67,23 @@ export default function DriversPage() {
                     <p className="truncate text-lg font-bold">{d.name}</p>
                     <p className="flex items-center gap-1 text-sm text-navy-700">
                       <Star size={14} aria-hidden />
-                      {d.rating == null ? 'Rating: coming with Pro' : `Rating ${d.rating.toFixed(1)} / 5`}
+                      {d.rating == null ? tr('drivers.ratingSoon') : `Rating ${d.rating.toFixed(1)} / 5`}
                     </p>
                   </div>
                   <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${AVAILABILITY[d.availability].cls}`}>
-                    {AVAILABILITY[d.availability].label}
+                    {tr(`drivers.${d.availability}`)}
                   </span>
                 </div>
                 <div className="mt-3 grid grid-cols-1 gap-2 min-[400px]:grid-cols-[1fr_auto]">
                   <label className="block">
-                    <span className="text-xs font-semibold text-navy-700">Truck</span>
+                    <span className="text-xs font-semibold text-navy-700">{tr('drivers.truck')}</span>
                     <select
                       value={d.truck_id ?? ''}
                       disabled={saving !== null}
                       onChange={(e) => assign(d, e.target.value || null)}
                       className="mt-1 h-11 w-full rounded-lg bg-white px-3 text-base ring-1 ring-gray-300 focus:outline-none focus:ring-2 focus:ring-green-300 disabled:opacity-60"
                     >
-                      <option value="">Not assigned</option>
+                      <option value="">{tr('drivers.notAssigned')}</option>
                       {trucks.map((t) => (
                         <option key={t.id} value={t.id}>
                           {t.reg_no}
@@ -94,7 +96,7 @@ export default function DriversPage() {
                     className="inline-flex min-h-[44px] items-center justify-center gap-1 self-end rounded-lg bg-green-700 px-4 text-sm font-semibold text-white hover:bg-green-500"
                     aria-label={`Call ${d.name}, ${d.phone}`}
                   >
-                    <Phone size={16} aria-hidden /> Call
+                    <Phone size={16} aria-hidden /> {tr('garage.call')}
                   </a>
                 </div>
                 {saving === d.id && <p className="mt-1 text-xs text-navy-700">Saving…</p>}

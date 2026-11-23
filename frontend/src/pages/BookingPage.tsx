@@ -6,6 +6,7 @@ import { ErrorBox, Loading } from '../components/PageState'
 import { ALERT_TITLE, formatAlertValue } from '../lib/status'
 import { formatDateTimeIST } from '../lib/format'
 import { positionName } from '../lib/tyreLayout'
+import { useLang } from '../lib/i18n'
 
 /**
  * "Garage booked" confirmation (Stitch brief screen 6): garage, distance, route button,
@@ -16,6 +17,7 @@ import { positionName } from '../lib/tyreLayout'
  */
 export default function BookingPage() {
   const { id = '' } = useParams()
+  const { t: tr } = useLang()
   const bookingQ = useApi(() => getBooking(id), [id])
   const booking = bookingQ.data
   const alertQ = useApi(() => (booking ? getAlert(booking.alert_id) : Promise.resolve(null)), [booking?.alert_id])
@@ -55,7 +57,7 @@ export default function BookingPage() {
               <CalendarCheck size={30} aria-hidden />
             </span>
             <div className="min-w-0">
-              <p className="font-heading text-xs font-bold uppercase tracking-widest text-green-50/90">Garage booked</p>
+              <p className="font-heading text-xs font-bold uppercase tracking-widest text-green-50/90">{tr('booking.title')}</p>
               <h1 className="mt-1 flex items-center gap-2 text-2xl font-extrabold leading-tight">
                 <span className="min-w-0 break-words">{g.name}</span>
                 {g.verified && <BadgeCheck size={22} className="shrink-0" aria-label="Verified" />}
@@ -72,7 +74,7 @@ export default function BookingPage() {
               rel="noreferrer"
               className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-white font-semibold text-green-700 hover:bg-green-50"
             >
-              <Navigation size={18} aria-hidden /> Navigate
+              <Navigation size={18} aria-hidden /> {tr('garage.navigate')}
             </a>
             <a
               href={`tel:${g.phone.replace(/\s/g, '')}`}
@@ -85,14 +87,11 @@ export default function BookingPage() {
 
         <p className="mt-4 flex gap-2 rounded-xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-warning/40" role="note">
           <Info size={18} className="mt-0.5 shrink-0" aria-hidden />
-          <span>
-            <strong>Prototype:</strong> booking isn't connected to garages yet, so nothing was sent. Please call the garage
-            to confirm the slot, the arrival time and the price.
-          </span>
+          <span>{tr('booking.prototype')}</span>
         </p>
 
         <section className="mt-4 rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
-          <h2 className="text-lg font-bold">Job details for the garage</h2>
+          <h2 className="text-lg font-bold">{tr('booking.job')}</h2>
           <p className="text-xs text-navy-700">What the garage will get once booking is connected.</p>
           <dl className="mt-3 divide-y divide-gray-100 text-sm">
             <Row label="Truck">{truck ? `${truck.reg_no} · ${truck.make} ${truck.model}` : '—'}</Row>
@@ -108,7 +107,7 @@ export default function BookingPage() {
           to="/fleet"
           className="mt-4 inline-flex min-h-[48px] w-full items-center justify-center rounded-lg border border-navy-900/20 font-semibold text-navy-900 hover:bg-green-50"
         >
-          Back to fleet
+          {tr('booking.back')}
         </Link>
       </div>
     </>

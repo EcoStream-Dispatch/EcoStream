@@ -4,7 +4,8 @@ import { AlertTriangle, CalendarClock, CheckCircle2, FileWarning, Info, OctagonA
 import { getAlerts, getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import { ErrorBox, Loading } from '../components/PageState'
-import { ALERT_TITLE } from '../lib/status'
+import { useAlertText } from '../lib/alertText'
+import { useLang } from '../lib/i18n'
 import { COMPLIANCE_NAME, dueState, dueText, formatDate, type DueState } from '../lib/compliance'
 import type { Alert, AlertType, ComplianceKind, TruckSummary } from '../types'
 
@@ -32,6 +33,7 @@ function duration(ms: number): string {
 
 export default function ReportsPage() {
   const alertsQ = useApi(() => getAlerts(), [])
+  const { t: tr } = useLang()
   const trucksQ = useApi(getTrucks, [])
   const thisMonth = monthOf(new Date().toISOString())
   const [month, setMonth] = useState(thisMonth)
@@ -53,11 +55,11 @@ export default function ReportsPage() {
     <>
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-2xl font-extrabold md:text-3xl">Reports</h1>
-          <p className="mt-1 text-navy-700">What happened this month, and what's due soon.</p>
+          <h1 className="text-2xl font-extrabold md:text-3xl">{tr('nav.reports')}</h1>
+          <p className="mt-1 text-navy-700">{tr('reports.sub')}</p>
         </div>
         <label className="block">
-          <span className="text-xs font-semibold text-navy-700">Month</span>
+          <span className="text-xs font-semibold text-navy-700">{tr('reports.month')}</span>
           <select
             value={month}
             onChange={(e) => setMonth(e.target.value)}
@@ -77,13 +79,15 @@ export default function ReportsPage() {
 
       <p className="mt-6 flex gap-2 rounded-xl bg-green-50 p-4 text-sm text-navy-700 ring-1 ring-green-500/20">
         <Info size={18} className="mt-0.5 shrink-0 text-green-700" aria-hidden />
-        Savings reports (money and downtime saved) come later, once we have real data from the pilot to measure them.
+        {tr('reports.savingsLater')}
       </p>
     </>
   )
 }
 
 function AlertSummary({ alerts, trucks }: { alerts: Alert[]; trucks: TruckSummary[] }) {
+  const { t: tr } = useLang()
+  const at = useAlertText()
   const critical = alerts.filter((a) => a.severity === 'critical').length
   const open = alerts.filter((a) => !a.acknowledged_at)
   const closed = alerts.filter((a) => a.acknowledged_at)
@@ -97,28 +101,28 @@ function AlertSummary({ alerts, trucks }: { alerts: Alert[]; trucks: TruckSummar
   return (
     <section className="mt-5" aria-labelledby="summary-heading">
       <h2 id="summary-heading" className="text-lg font-bold">
-        Alerts
+        {tr('nav.alerts')}
       </h2>
       {alerts.length === 0 ? (
         <p className="mt-2 rounded-xl bg-white p-5 text-navy-700 ring-1 ring-gray-200">No alerts in this month.</p>
       ) : (
         <>
           <ul className="mt-2 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Tile label="Alerts raised" value={String(alerts.length)} icon={AlertTriangle} />
-            <Tile label="Critical" value={String(critical)} icon={OctagonAlert} tone={critical ? 'text-critical' : undefined} />
-            <Tile label="Still open" value={String(open.length)} icon={FileWarning} tone={open.length ? 'text-amber-800' : undefined} />
+            <Tile label={tr('reports.raised')} value={String(alerts.length)} icon={AlertTriangle} />
+            <Tile label={tr('status.critical')} value={String(critical)} icon={OctagonAlert} tone={critical ? 'text-critical' : undefined} />
+            <Tile label={tr('reports.stillOpen')} value={String(open.length)} icon={FileWarning} tone={open.length ? 'text-amber-800' : undefined} />
             <Tile label="Avg. time to acknowledge" value={avgClosed === null ? '—' : duration(avgClosed)} icon={CheckCircle2} small />
           </ul>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
-              <h3 className="font-bold">By type</h3>
+              <h3 className="font-bold">{tr('reports.byType')}</h3>
               <ul className="mt-2 divide-y divide-gray-100">
                 {[...byType.entries()]
                   .sort((a, b) => b[1] - a[1])
                   .map(([type, n]) => (
                     <li key={type} className="flex justify-between py-2 text-sm">
-                      <span>{ALERT_TITLE[type]}</span>
+                      <span>{at.title(type)}</span>
                       <span className="font-semibold">{n}</span>
                     </li>
                   ))}
@@ -126,7 +130,7 @@ function AlertSummary({ alerts, trucks }: { alerts: Alert[]; trucks: TruckSummar
             </div>
 
             <div className="min-w-0 rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
-              <h3 className="font-bold">By truck</h3>
+              <h3 className="font-bold">{tr('reports.byTruck')}</h3>
               <p className="text-xs text-navy-700">
                 "Time open" is how long alerts stayed open before someone acknowledged them (open ones: until now). It is not
                 the time the truck stood still: we don't track that yet.
@@ -163,6 +167,8 @@ const DUE_STYLE: Record<DueState, { label: string; cls: string }> = {
 }
 
 function Compliance({ trucks }: { trucks: TruckSummary[] }) {
+  const { t: tr } = useLang()
+  const dueLabel = (s: DueState) => (s === 'overdue' ? tr('reports.overdue') : s === 'due_soon' ? tr('reports.dueSoon') : tr('status.ok'))
   const rows = trucks
     .flatMap((t) => (t.compliance ?? []).map((c) => ({ truck: t, ...c, state: dueState(c.due_date) })))
     .sort((a, b) => a.due_date.localeCompare(b.due_date))
@@ -172,7 +178,7 @@ function Compliance({ trucks }: { trucks: TruckSummary[] }) {
     <section className="mt-6" aria-labelledby="compliance-heading">
       <div className="flex items-baseline justify-between gap-2">
         <h2 id="compliance-heading" className="flex items-center gap-2 text-lg font-bold">
-          <CalendarClock size={20} className="text-green-700" aria-hidden /> Compliance reminders
+          <CalendarClock size={20} className="text-green-700" aria-hidden /> {tr('reports.compliance')}
         </h2>
         {urgent > 0 && <span className="text-sm font-semibold text-critical">{urgent} need action</span>}
       </div>
@@ -193,7 +199,7 @@ function Compliance({ trucks }: { trucks: TruckSummary[] }) {
                 <p className={`text-sm ${r.state === 'overdue' ? 'font-semibold text-critical' : 'text-navy-700'}`}>{dueText(r.due_date)}</p>
               </div>
               <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${DUE_STYLE[r.state].cls}`}>
-                {DUE_STYLE[r.state].label}
+                {dueLabel(r.state)}
               </span>
             </li>
           ))}

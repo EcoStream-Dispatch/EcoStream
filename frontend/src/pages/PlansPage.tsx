@@ -5,6 +5,7 @@ import { useApi } from '../hooks/useApi'
 import PlanBadge from '../components/PlanBadge'
 import { ADD_ONS, ANNUAL_DISCOUNT, PLANS, formatInr, planOf } from '../lib/plans'
 import type { Plan } from '../types'
+import { useLang } from '../lib/i18n'
 
 /**
  * Plans (Stitch brief screen 7; features and prices from the Excel "Subscription Tiers" sheet).
@@ -12,6 +13,7 @@ import type { Plan } from '../types'
  */
 export default function PlansPage() {
   const [annual, setAnnual] = useState(false)
+  const { t: tr } = useLang()
   const [asked, setAsked] = useState<Plan | null>(null)
   const trucksQ = useApi(getTrucks, [])
 
@@ -23,14 +25,14 @@ export default function PlansPage() {
     <>
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
-          <h1 className="text-2xl font-extrabold md:text-3xl">Plans</h1>
-          <p className="mt-1 text-navy-700">Pay per truck, per month. Pick a plan for each truck.</p>
+          <h1 className="text-2xl font-extrabold md:text-3xl">{tr('plans.title')}</h1>
+          <p className="mt-1 text-navy-700">{tr('plans.sub')}</p>
         </div>
         {/* Monthly / annual switch */}
         <div className="inline-flex self-start rounded-lg bg-white p-1 ring-1 ring-gray-200" role="group" aria-label="Billing">
           {[
-            { v: false, label: 'Monthly' },
-            { v: true, label: 'Annual prepaid −10%' },
+            { v: false, label: tr('plans.monthly') },
+            { v: true, label: tr('plans.annual') },
           ].map(({ v, label }) => (
             <button
               key={label}
@@ -67,7 +69,7 @@ export default function PlansPage() {
 
               <p className="mt-4 flex items-baseline gap-1">
                 <span className="font-heading text-4xl font-extrabold">{formatInr(annual ? yearly / 12 : p.priceInr)}</span>
-                <span className="text-sm text-navy-700">/ truck / month</span>
+                <span className="text-sm text-navy-700">{tr('plans.perTruck')}</span>
               </p>
               <p className="min-h-[20px] text-xs text-navy-700">
                 {annual ? `${formatInr(yearly)} per truck, paid once a year (list ${formatInr(p.priceInr * 12)})` : 'Billed monthly'}
@@ -94,7 +96,7 @@ export default function PlansPage() {
                   featured ? 'bg-green-700 text-white hover:bg-green-500' : 'border-2 border-green-700 text-green-700 hover:bg-green-50'
                 }`}
               >
-                <MessageCircle size={18} aria-hidden /> Talk to us
+                <MessageCircle size={18} aria-hidden /> {tr('plans.talk')}
               </button>
               {asked === p.id && (
                 <p className="mt-2 text-sm text-navy-700" role="status">
@@ -107,12 +109,12 @@ export default function PlansPage() {
         })}
       </ul>
 
-      <p className="mt-3 text-sm text-navy-700">Proposed prices, to be confirmed in our pilot.</p>
+      <p className="mt-3 text-sm text-navy-700">{tr('plans.proposed')}</p>
 
       {/* Add-ons */}
       <section className="mt-6 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200" aria-labelledby="addons-heading">
         <h2 id="addons-heading" className="flex items-center gap-2 text-lg font-bold">
-          <PackagePlus size={20} className="text-green-700" aria-hidden /> Add-ons
+          <PackagePlus size={20} className="text-green-700" aria-hidden /> {tr('plans.addons')}
         </h2>
         <p className="text-sm text-navy-700">Add to any plan. Not available in the prototype yet.</p>
         <ul className="mt-3 grid gap-3 sm:grid-cols-3">

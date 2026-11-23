@@ -9,7 +9,9 @@ import StatusBadge from '../components/StatusBadge'
 import Pressure from '../components/Pressure'
 import { ErrorBox, Loading } from '../components/PageState'
 import { ALERT_TITLE, STATUS_STYLE, formatAlertValue } from '../lib/status'
-import { WHAT_TO_DO, hoursUntilUnsafe, unsafeLabel } from '../lib/alerts'
+import { useAlertText } from '../lib/alertText'
+import { useLang } from '../lib/i18n'
+import { WHAT_TO_DO, hoursUntilUnsafe } from '../lib/alerts'
 import { formatDateTimeIST, timeAgo } from '../lib/format'
 import { formatTemp } from '../lib/units'
 import { positionName } from '../lib/tyreLayout'
@@ -50,11 +52,13 @@ export default function AlertDetailPage() {
 
 function Detail({ alert, truck, onChanged }: { alert: Alert; truck?: TruckSummary; onChanged: () => void }) {
   const navigate = useNavigate()
+  const { t } = useLang()
+  const at = useAlertText()
   const tyre = truck?.tyres.find((t) => t.id === alert.tyre_id)
   const where = tyre ? positionName(tyre.position) : 'a tyre'
   const isOpen = !alert.acknowledged_at
   const critical = alert.severity === 'critical'
-  const countdown = isOpen ? unsafeLabel(hoursUntilUnsafe(alert, truck)) : null
+  const countdown = isOpen ? at.unsafe(hoursUntilUnsafe(alert, truck)) : null
   const { icon: Icon } = STATUS_STYLE[alert.severity]
 
   const [busy, setBusy] = useState(false)
@@ -108,7 +112,7 @@ function Detail({ alert, truck, onChanged }: { alert: Alert; truck?: TruckSummar
   return (
     <>
       <Link to="/alerts" className="inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold text-green-700 hover:text-green-500">
-        <ArrowLeft size={16} aria-hidden /> Alerts
+        <ArrowLeft size={16} aria-hidden /> {t('nav.alerts')}
       </Link>
 
       {/* Big coloured header */}
@@ -127,10 +131,10 @@ function Detail({ alert, truck, onChanged }: { alert: Alert; truck?: TruckSummar
           </span>
           <div className="min-w-0 flex-1">
             <p className="font-heading text-xs font-bold uppercase tracking-widest">
-              {isOpen ? (critical ? 'Critical alert' : 'Warning') : 'Closed alert'}
+              {isOpen ? t(critical ? 'status.critical' : 'status.warning') : t('alerts.closed')}
             </p>
             <h1 className="mt-1 text-2xl font-extrabold leading-tight md:text-3xl">
-              {ALERT_TITLE[alert.type]} · {where}
+              {at.title(alert.type)} · {where}
             </h1>
             <p className="mt-1 text-sm font-semibold">
               {truck ? (
@@ -154,7 +158,7 @@ function Detail({ alert, truck, onChanged }: { alert: Alert; truck?: TruckSummar
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         {/* Problem in plain words */}
         <section className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
-          <h2 className="text-lg font-bold">What's wrong</h2>
+          <h2 className="text-lg font-bold">{t('detail.whatsWrong')}</h2>
           <p className="mt-2">{alert.message}</p>
           <dl className="mt-3 grid grid-cols-1 gap-2 min-[400px]:grid-cols-2">
             <div className="rounded-lg bg-gray-50 p-3">
@@ -186,9 +190,9 @@ function Detail({ alert, truck, onChanged }: { alert: Alert; truck?: TruckSummar
 
         {/* What to do now */}
         <section className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
-          <h2 className="text-lg font-bold">What to do now</h2>
+          <h2 className="text-lg font-bold">{t('detail.whatToDo')}</h2>
           <ol className="mt-3 space-y-3">
-            {WHAT_TO_DO[alert.type].map((step, i) => (
+            {at.steps(alert.type).map((step, i) => (
               <li key={i} className="flex gap-3">
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-700 font-heading text-sm font-bold text-white">
                   {i + 1}
@@ -203,7 +207,7 @@ function Detail({ alert, truck, onChanged }: { alert: Alert; truck?: TruckSummar
               onClick={share}
               className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg bg-navy-900 px-4 font-semibold text-white hover:bg-navy-700"
             >
-              <Share2 size={18} aria-hidden /> Share with driver
+              <Share2 size={18} aria-hidden /> {t('detail.share')}
             </button>
             {isOpen && (
               <button
@@ -212,7 +216,7 @@ function Detail({ alert, truck, onChanged }: { alert: Alert; truck?: TruckSummar
                 disabled={busy}
                 className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg border border-navy-900/20 px-4 font-semibold text-navy-900 hover:bg-green-50 disabled:opacity-50"
               >
-                <CheckCheck size={18} aria-hidden /> {busy ? 'Saving…' : 'Acknowledge'}
+                <CheckCheck size={18} aria-hidden /> {busy ? t('alerts.saving') : t('alerts.ack')}
               </button>
             )}
           </div>
@@ -228,7 +232,7 @@ function Detail({ alert, truck, onChanged }: { alert: Alert; truck?: TruckSummar
       {isOpen && (
         <section className="mt-4 rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-bold">Nearest open garages</h2>
+            <h2 className="text-lg font-bold">{t('alerts.garages')}</h2>
             <StatusBadge status={alert.severity} />
           </div>
           <p className="mb-3 mt-1 text-xs text-navy-700">Straight-line distance from the truck's last position.</p>

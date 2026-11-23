@@ -16,6 +16,7 @@ import { formatTimeIST, timeAgo } from '../lib/format'
 import { positionName } from '../lib/tyreLayout'
 import { hasPro, planOf } from '../lib/plans'
 import { nearestTown } from '../lib/geo'
+import { useLang } from '../lib/i18n'
 import type { TruckSummary, TyreWithStatus } from '../types'
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000
@@ -27,6 +28,7 @@ const TWO_HOURS_MS = 2 * 60 * 60 * 1000
  */
 export default function TruckPage() {
   const { id = '' } = useParams()
+  const { t: tr } = useLang()
   const truckQ = useApi(() => getTruck(id), [id])
   const readingsQ = useApi(() => getReadings(id, new Date(Date.now() - TWO_HOURS_MS)), [id])
   const truck = truckQ.data
@@ -91,7 +93,7 @@ export default function TruckPage() {
             {truck.make} {truck.model} · {truck.axle_config === '10W' ? '10-wheel (2 rear axles)' : '6-wheel (1 rear axle)'}
           </p>
           <p className="mt-1 inline-flex items-center gap-1 text-sm text-navy-700">
-            <Clock size={14} aria-hidden /> Last seen {timeAgo(truck.last_seen_at)}
+            <Clock size={14} aria-hidden /> {tr('truck.lastSeen')} {timeAgo(truck.last_seen_at)}
           </p>
         </div>
         <StatusBadge status={truck.status} className="text-sm" />
@@ -100,9 +102,9 @@ export default function TruckPage() {
       <div className="mt-4 grid gap-4 md:grid-cols-[280px_1fr]">
         {/* Tyre diagram */}
         <section className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
-          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-navy-700">Tyres</h2>
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-navy-700">{tr('truck.tyres')}</h2>
           <TyreLayout axleConfig={truck.axle_config} tyres={truck.tyres} selectedId={selectedId} onSelect={setSelectedId} />
-          <p className="mt-2 text-center text-xs text-navy-700">Tap a tyre to see its details</p>
+          <p className="mt-2 text-center text-xs text-navy-700">{tr('truck.tapTyre')}</p>
         </section>
 
         {/* Selected tyre + chart */}
@@ -119,7 +121,7 @@ export default function TruckPage() {
                 <StatusBadge status={selected.status} />
               </div>
               <TyreStats tyre={selected} />
-              <h3 className="mt-5 text-sm font-bold uppercase tracking-wide text-navy-700">Last 2 hours</h3>
+              <h3 className="mt-5 text-sm font-bold uppercase tracking-wide text-navy-700">{tr('truck.last2h')}</h3>
               {readingsQ.loading && !readingsQ.data ? (
                 <Loading what="readings" />
               ) : readingsQ.error ? (
@@ -143,7 +145,7 @@ export default function TruckPage() {
 
       {/* All tyres at a glance */}
       <section className="mt-4 rounded-xl bg-white shadow-sm ring-1 ring-gray-200">
-        <h2 className="px-4 pt-4 text-sm font-bold uppercase tracking-wide text-navy-700">All tyres</h2>
+        <h2 className="px-4 pt-4 text-sm font-bold uppercase tracking-wide text-navy-700">{tr('truck.allTyres')}</h2>
         <ul className="mt-2 divide-y divide-gray-100">
           {truck.tyres.map((t) => (
             <li key={t.id}>
@@ -231,12 +233,13 @@ function Panel({ title, icon: Icon, children, className = '' }: { title: string;
 
 /** Truck battery (24 V). The device doesn't send it yet, so this usually says "No data yet". */
 function BatteryCard({ truck }: { truck: TruckSummary }) {
+  const { t: tr } = useLang()
   const v = truck.battery_v
   return (
-    <Panel title="Battery" icon={BatteryCharging}>
+    <Panel title={tr('truck.battery')} icon={BatteryCharging}>
       {v == null ? (
         <>
-          <p className="font-semibold">No data yet</p>
+          <p className="font-semibold">{tr('truck.noData')}</p>
           <p className="mt-1 text-sm text-navy-700">
             Battery voltage will show here once the EcoStream device starts sending it.
           </p>
@@ -255,10 +258,11 @@ function BatteryCard({ truck }: { truck: TruckSummary }) {
 
 /** Last known position on the corridor map, with the nearest town and a Maps link. */
 function LocationCard({ truck }: { truck: TruckSummary }) {
+  const { t: tr } = useLang()
   const has = truck.lat != null && truck.lon != null
   const town = has ? nearestTown(truck.lat!, truck.lon!) : null
   return (
-    <Panel title="Location" icon={MapPin}>
+    <Panel title={tr('truck.location')} icon={MapPin}>
       {has ? (
         <>
           <p className="font-semibold">
@@ -276,7 +280,7 @@ function LocationCard({ truck }: { truck: TruckSummary }) {
             rel="noreferrer"
             className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border-2 border-green-700 text-sm font-semibold text-green-700 hover:bg-green-50"
           >
-            <Navigation size={16} aria-hidden /> Open in Google Maps
+            <Navigation size={16} aria-hidden /> {tr('truck.openMaps')}
           </a>
         </>
       ) : (
@@ -297,6 +301,7 @@ const ENGINE_ITEMS: { title: string; icon: LucideIcon; text: string }[] = [
  * Pro/Fleet trucks: the engine (CAN/J1939) plug-in isn't built yet, so we say that plainly.
  */
 function EngineCards({ truck }: { truck: TruckSummary }) {
+  const { t: tr } = useLang()
   const pro = hasPro(planOf(truck))
   return (
     <section className="min-w-0 space-y-3 lg:col-span-1">
@@ -323,7 +328,7 @@ function EngineCards({ truck }: { truck: TruckSummary }) {
               <Lock size={16} aria-hidden />
             </p>
             <p className="mt-1 text-sm text-navy-700/80">{text}</p>
-            <p className="mt-2 text-sm font-semibold text-green-700">Available in Pro – Upgrade →</p>
+            <p className="mt-2 text-sm font-semibold text-green-700">{tr('truck.upgrade')}</p>
           </Link>
         ),
       )}

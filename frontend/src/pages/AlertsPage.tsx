@@ -7,10 +7,12 @@ import { useLiveEvents, useThrottled } from '../services/live'
 import StatusBadge from '../components/StatusBadge'
 import GarageList from '../components/GarageList'
 import { ErrorBox, Loading } from '../components/PageState'
-import { ALERT_TITLE, formatAlertValue } from '../lib/status'
+import { formatAlertValue } from '../lib/status'
 import { formatDateTimeIST, timeAgo } from '../lib/format'
 import { positionName } from '../lib/tyreLayout'
-import { hoursUntilUnsafe, unsafeLabel } from '../lib/alerts'
+import { hoursUntilUnsafe } from '../lib/alerts'
+import { useAlertText } from '../lib/alertText'
+import { useLang } from '../lib/i18n'
 import type { Alert, TruckSummary } from '../types'
 
 type Filter = 'open' | 'closed'
@@ -21,6 +23,7 @@ type Filter = 'open' | 'closed'
  */
 export default function AlertsPage() {
   const [filter, setFilter] = useState<Filter>('open')
+  const { t } = useLang()
   const alertsQ = useApi(() => getAlerts(filter === 'open'), [filter])
   // Trucks give us the reg no, tyre position and location for each alert.
   const trucksQ = useApi(getTrucks, [])
@@ -36,7 +39,7 @@ export default function AlertsPage() {
 
   return (
     <>
-      <h1 className="text-2xl font-bold">Alerts</h1>
+      <h1 className="text-2xl font-bold">{t('nav.alerts')}</h1>
 
       {/* Open / Closed filter */}
       <div className="mt-3 inline-flex rounded-lg bg-white p-1 ring-1 ring-gray-200" role="tablist">
@@ -50,7 +53,7 @@ export default function AlertsPage() {
               filter === f ? 'bg-green-700 text-white' : 'text-navy-700 hover:bg-gray-100'
             }`}
           >
-            {f}
+            {t(f === 'open' ? 'alerts.open' : 'alerts.closed')}
           </button>
         ))}
       </div>
@@ -60,7 +63,7 @@ export default function AlertsPage() {
         {alertsQ.error && <ErrorBox message={alertsQ.error} onRetry={alertsQ.reload} />}
         {alertsQ.data && alertsQ.data.length === 0 && (
           <p className="rounded-xl bg-white p-6 text-center text-navy-700 ring-1 ring-gray-200">
-            {filter === 'open' ? 'No open alerts. All good.' : 'No closed alerts yet.'}
+            {filter === 'open' ? t('alerts.noneOpen') : t('alerts.noneClosed')}
           </p>
         )}
         {alertsQ.data && trucksQ.data && (
@@ -82,7 +85,9 @@ function AlertCard({ alert, truck, onAcked }: { alert: Alert; truck?: TruckSumma
   const [ackError, setAckError] = useState<string | null>(null)
   const tyre = truck?.tyres.find((t) => t.id === alert.tyre_id)
   const isOpen = !alert.acknowledged_at
-  const countdown = isOpen ? unsafeLabel(hoursUntilUnsafe(alert, truck)) : null
+  const { t } = useLang()
+  const at = useAlertText()
+  const countdown = isOpen ? at.unsafe(hoursUntilUnsafe(alert, truck)) : null
 
   async function acknowledge() {
     setBusy(true)
@@ -106,7 +111,7 @@ function AlertCard({ alert, truck, onAcked }: { alert: Alert; truck?: TruckSumma
         <div>
           <h2 className="text-lg font-bold">
             <Link to={`/alerts/${alert.id}`} className="hover:text-green-700">
-              {ALERT_TITLE[alert.type]}
+              {at.title(alert.type)}
             </Link>
           </h2>
           <p className="text-sm text-navy-700">
@@ -137,12 +142,12 @@ function AlertCard({ alert, truck, onAcked }: { alert: Alert; truck?: TruckSumma
         to={`/alerts/${alert.id}`}
         className="mt-3 inline-flex min-h-[44px] items-center gap-1 rounded-lg bg-navy-900 px-4 text-sm font-semibold text-white hover:bg-navy-700"
       >
-        {isOpen ? 'What to do, book a garage' : 'Open alert'} <ChevronRight size={16} aria-hidden />
+        {isOpen ? t('alerts.openDetail') : t('alerts.view')} <ChevronRight size={16} aria-hidden />
       </Link>
 
       {isOpen && (
         <>
-          <h3 className="mt-4 mb-2 text-sm font-bold uppercase tracking-wide text-navy-700">Nearest open garages</h3>
+          <h3 className="mt-4 mb-2 text-sm font-bold uppercase tracking-wide text-navy-700">{t('alerts.garages')}</h3>
           <GarageList lat={truck?.lat ?? null} lon={truck?.lon ?? null} />
 
           <button
@@ -150,7 +155,7 @@ function AlertCard({ alert, truck, onAcked }: { alert: Alert; truck?: TruckSumma
             disabled={busy}
             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-navy-900/20 px-4 py-2.5 font-semibold text-navy-900 transition hover:bg-green-50 disabled:opacity-50 sm:w-auto"
           >
-            <CheckCheck size={18} aria-hidden /> {busy ? 'Saving…' : 'Acknowledge'}
+            <CheckCheck size={18} aria-hidden /> {busy ? t('alerts.saving') : t('alerts.ack')}
           </button>
           {ackError && <p className="mt-2 text-sm text-critical">{ackError}</p>}
         </>

@@ -7,6 +7,7 @@ import LanguageSwitch from '../components/LanguageSwitch'
 import PlanBadge from '../components/PlanBadge'
 import { ErrorBox, Loading } from '../components/PageState'
 import { planOf } from '../lib/plans'
+import { useLang } from '../lib/i18n'
 
 /**
  * Owner profile: company, GST number, contact name and phone (table fleet_owners;
@@ -17,11 +18,12 @@ export default function ProfilePage() {
   const ownerQ = useApi(getOwner, [])
   const trucksQ = useApi(getTrucks, [])
   const { session, signOut } = useAuth()
+  const { t: tr } = useLang()
   const owner = ownerQ.data
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-2xl font-extrabold md:text-3xl">Profile</h1>
+      <h1 className="text-2xl font-extrabold md:text-3xl">{tr('nav.profile')}</h1>
 
       {ownerQ.loading && !owner && <Loading what="profile" />}
       {ownerQ.error && <ErrorBox message={ownerQ.error} onRetry={ownerQ.reload} />}
@@ -43,10 +45,10 @@ export default function ProfilePage() {
             </div>
           </div>
           <dl className="mt-5 grid gap-3 sm:grid-cols-2">
-            <Field icon={Building2} label="Company" value={owner.company} />
-            <Field icon={Receipt} label="GST number" value={owner.gst_no} />
-            <Field icon={UserRound} label="Contact name" value={owner.name} />
-            <Field icon={Phone} label="Phone" value={owner.phone} />
+            <Field icon={Building2} label={tr('profile.company')} value={owner.company} />
+            <Field icon={Receipt} label={tr('profile.gst')} value={owner.gst_no} />
+            <Field icon={UserRound} label={tr('profile.contact')} value={owner.name} />
+            <Field icon={Phone} label={tr('profile.phone')} value={owner.phone} />
           </dl>
           {session?.user.email && <p className="mt-3 text-sm text-navy-700">Logged in as {session.user.email}</p>}
           <p className="mt-3 text-xs text-navy-700">To change these details, contact the EcoStream team.</p>
@@ -56,9 +58,9 @@ export default function ProfilePage() {
       {/* Trucks and plans */}
       <section className="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-bold">Trucks and plans</h2>
+          <h2 className="text-lg font-bold">{tr('profile.trucksPlans')}</h2>
           <Link to="/plans" className="inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold text-green-700 hover:text-green-500">
-            <Tag size={16} aria-hidden /> See plans
+            <Tag size={16} aria-hidden /> {tr('nav.plans')}
           </Link>
         </div>
         {trucksQ.data && (
@@ -85,7 +87,7 @@ export default function ProfilePage() {
 
       {/* Settings */}
       <section className="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
-        <h2 className="text-lg font-bold">Language</h2>
+        <h2 className="text-lg font-bold">{tr('profile.language')}</h2>
         <LanguageSwitch className="mt-3" />
         {session && (
           <button
@@ -93,7 +95,7 @@ export default function ProfilePage() {
             onClick={signOut}
             className="mt-5 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg border border-navy-900/20 font-semibold text-navy-900 hover:bg-red-50 hover:text-critical sm:w-auto sm:px-6"
           >
-            <LogOut size={18} aria-hidden /> Log out
+            <LogOut size={18} aria-hidden /> {tr('nav.logout')}
           </button>
         )}
       </section>

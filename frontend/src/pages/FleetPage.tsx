@@ -9,11 +9,12 @@ import PlanBadge from '../components/PlanBadge'
 import { planOf } from '../lib/plans'
 import FleetMap from '../components/FleetMap'
 import { ErrorBox, Loading } from '../components/PageState'
-import { ALERT_TITLE, STATUS_STYLE, formatAlertValue } from '../lib/status'
+import { STATUS_STYLE, formatAlertValue } from '../lib/status'
 import { timeAgo } from '../lib/format'
-import { SEVERITY_RANK, hoursUntilUnsafe, unsafeLabel } from '../lib/alerts'
+import { SEVERITY_RANK, hoursUntilUnsafe } from '../lib/alerts'
+import { useAlertText } from '../lib/alertText'
+import { useLang } from '../lib/i18n'
 import { positionName } from '../lib/tyreLayout'
-import { AVAILABILITY } from '../lib/drivers'
 import type { Alert, Driver, DriverAvailability, TruckSummary, TyreStatus } from '../types'
 
 /**
@@ -38,6 +39,7 @@ function fleetState(t: TruckSummary, now = Date.now()): FleetState {
 }
 
 export default function FleetPage() {
+  const { t: tr } = useLang()
   const trucksQ = useApi(getTrucks, [])
   const alertsQ = useApi(() => getAlerts(true), [])
   // Drivers are demo-only for now (null when not connected): then the driver row is hidden.
@@ -77,7 +79,7 @@ export default function FleetPage() {
           <span className="inline-flex items-center gap-1.5 text-sm text-navy-700">
             <span className="h-2 w-2 animate-pulse rounded-full bg-green-500" aria-hidden /> Live tyre data
           </span>
-          <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">Fleet command center</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight md:text-3xl">{tr('fleet.title')}</h1>
           <p className="mt-0.5 text-sm text-navy-700">
             Corridor: <span className="font-semibold text-navy-900">Chennai — Salem — Namakkal</span>
           </p>
@@ -89,7 +91,7 @@ export default function FleetPage() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Find a truck (e.g. TN 99)"
+            placeholder={tr('fleet.search')}
             className="h-11 w-full rounded-lg bg-white pl-10 pr-3 text-base shadow-sm ring-1 ring-gray-200 placeholder:text-navy-700/50 focus:outline-none focus:ring-2 focus:ring-green-300"
           />
         </label>
@@ -114,14 +116,14 @@ export default function FleetPage() {
                       {urgent.length > 0 && <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-critical opacity-75" />}
                       <span className={`relative inline-flex h-3 w-3 rounded-full ${urgent.length ? 'bg-critical' : 'bg-green-500'}`} />
                     </span>
-                    Needs attention now
+                    {tr('fleet.attention')}
                   </h2>
                   {urgent.length > 0 && (
                     <span className="rounded bg-red-50 px-2 py-0.5 text-xs font-bold text-critical">{urgent.length} open</span>
                   )}
                 </div>
                 {urgent.length === 0 ? (
-                  <p className="text-sm text-navy-700">Nothing right now. All tyres look fine.</p>
+                  <p className="text-sm text-navy-700">{tr('fleet.allFine')}</p>
                 ) : (
                   <ul className="space-y-3">
                     {urgent.slice(0, 3).map((a) => (
@@ -140,7 +142,7 @@ export default function FleetPage() {
             </section>
             <section className="min-w-0 lg:col-span-7" aria-label="Map">
               <div className="mb-2 flex items-center gap-2">
-                <h2 className="text-lg font-bold">Live corridor</h2>
+                <h2 className="text-lg font-bold">{tr('fleet.map')}</h2>
                 <span className="text-sm text-navy-700">NH 48 / NH 44</span>
               </div>
               <FleetMap trucks={trucks} />
@@ -151,7 +153,7 @@ export default function FleetPage() {
           <section className="mt-6" aria-labelledby="trucks-heading">
             <div className="mb-3 flex items-baseline justify-between">
               <h2 id="trucks-heading" className="text-lg font-bold">
-                My trucks
+                {tr('fleet.myTrucks')}
               </h2>
               <span className="text-sm text-navy-700">
                 {shown.length} of {trucks.length}
@@ -176,24 +178,25 @@ export default function FleetPage() {
 }
 
 function KpiPods({ trucks, openAlerts }: { trucks: TruckSummary[]; openAlerts: number }) {
+  const { t: tr } = useLang()
   const counts: Record<FleetState, number> = { ok: 0, warning: 0, critical: 0, offline: 0 }
   trucks.forEach((t) => counts[fleetState(t)]++)
   const pct = (n: number) => `${Math.round((n / trucks.length) * 100)}%`
 
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-      <Pod label="Fleet total" icon={Truck} value={trucks.length} note={`${trucks.length - counts.offline} reporting`} bar={1 - counts.offline / trucks.length} />
+      <Pod label={tr('fleet.total')} icon={Truck} value={trucks.length} note={`${trucks.length - counts.offline} reporting`} bar={1 - counts.offline / trucks.length} />
       {(['ok', 'warning', 'critical', 'offline'] as FleetState[]).map((s) => (
         <Pod
           key={s}
-          label={STATUS_STYLE[s].label}
+          label={tr(`status.${s}`)}
           icon={STATUS_STYLE[s].icon}
           value={counts[s]}
           note={`${pct(counts[s])} of trucks`}
           tone={s}
         />
       ))}
-      <Pod label="Open alerts" icon={BellRing} value={openAlerts} note="Tap to see all" to="/alerts" tone={openAlerts ? 'critical' : 'ok'} />
+      <Pod label={tr('fleet.openAlerts')} icon={BellRing} value={openAlerts} note="Tap to see all" to="/alerts" tone={openAlerts ? 'critical' : 'ok'} />
     </ul>
   )
 }
@@ -244,6 +247,8 @@ function Pod({
 
 /** One "needs attention" card: truck chip, countdown, 3-number readout, nearest garage. */
 function Incident({ alert, truck }: { alert: Alert; truck?: TruckSummary }) {
+  const { t: tr } = useLang()
+  const at = useAlertText()
   const tyre = truck?.tyres.find((t) => t.id === alert.tyre_id)
   const hours = hoursUntilUnsafe(alert, truck)
   const garages = useApi(
@@ -262,11 +267,11 @@ function Incident({ alert, truck }: { alert: Alert; truck?: TruckSummary }) {
               {truck?.make} {truck?.model}
             </span>
           </div>
-          <p className="mt-1 font-semibold">{ALERT_TITLE[alert.type]}</p>
+          <p className="mt-1 font-semibold">{at.title(alert.type)}</p>
         </div>
         {hours !== null ? (
           <span className="shrink-0 animate-pulse rounded bg-critical px-2 py-1 text-center font-heading text-[11px] font-bold uppercase text-white">
-            {unsafeLabel(hours)}
+            {at.unsafe(hours)}
           </span>
         ) : (
           <StatusBadge status={alert.severity} className="shrink-0" />
@@ -299,7 +304,7 @@ function Incident({ alert, truck }: { alert: Alert; truck?: TruckSummary }) {
           to={`/alerts/${alert.id}`}
           className="inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-lg bg-green-700 px-4 text-sm font-semibold text-white hover:bg-green-500"
         >
-          <Wrench size={16} aria-hidden /> What to do
+          <Wrench size={16} aria-hidden /> {tr('fleet.whatToDo')}
         </Link>
       </div>
       <p className="mt-2 text-xs text-navy-700">Raised {timeAgo(alert.created_at)}</p>
@@ -308,6 +313,8 @@ function Incident({ alert, truck }: { alert: Alert; truck?: TruckSummary }) {
 }
 
 function TruckCard({ truck, issue, driver }: { truck: TruckSummary; issue?: Alert; driver?: Driver }) {
+  const { t: tr } = useLang()
+  const at = useAlertText()
   const state = fleetState(truck)
   const counts = truck.tyres.reduce<Partial<Record<TyreStatus, number>>>((acc, t) => {
     acc[t.status] = (acc[t.status] ?? 0) + 1
@@ -342,7 +349,7 @@ function TruckCard({ truck, issue, driver }: { truck: TruckSummary; issue?: Aler
         )}
         <li className="flex items-center gap-1.5">
           <UserRound size={14} className="shrink-0" aria-hidden />
-          <span className="truncate">{driver ? driver.name : 'No driver assigned'}</span>
+          <span className="truncate">{driver ? driver.name : tr('fleet.noDriver')}</span>
         </li>
       </ul>
 
@@ -352,9 +359,9 @@ function TruckCard({ truck, issue, driver }: { truck: TruckSummary; issue?: Aler
             issue.severity === 'critical' ? 'bg-red-50 text-critical' : 'bg-amber-50 text-amber-900'
           }`}
         >
-          {ALERT_TITLE[issue.type]}
+          {at.title(issue.type)}
           {pos ? `: ${positionName(pos)}` : ''}
-          {hours !== null && hours >= 1 ? ` · unsafe in ~${Math.round(hours)} h` : ''}
+          {hours !== null ? ` · ${at.unsafe(hours)}` : ''}
         </p>
       )}
 
@@ -368,7 +375,7 @@ function TruckCard({ truck, issue, driver }: { truck: TruckSummary; issue?: Aler
             .map((s) => (
               <li key={s} className="inline-flex items-center gap-1">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ background: STATUS_STYLE[s].hex }} aria-hidden />
-                {counts[s]} {STATUS_STYLE[s].label}
+                {counts[s]} {tr(`status.${s}`)}
               </li>
             ))}
         </ul>
@@ -380,6 +387,7 @@ function TruckCard({ truck, issue, driver }: { truck: TruckSummary; issue?: Aler
 
 /** One line with driver availability counts, linking to the Drivers page. */
 function DriverStrip({ drivers }: { drivers: Driver[] }) {
+  const { t: tr } = useLang()
   const n = (a: DriverAvailability) => drivers.filter((d) => d.availability === a).length
   return (
     <Link
@@ -387,11 +395,11 @@ function DriverStrip({ drivers }: { drivers: Driver[] }) {
       className="mt-3 flex min-h-[48px] flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-white px-4 py-2 text-sm shadow-sm ring-1 ring-green-500/10 transition hover:ring-green-500"
     >
       <span className="inline-flex items-center gap-2 font-bold">
-        <Users size={18} className="text-green-700" aria-hidden /> Drivers
+        <Users size={18} className="text-green-700" aria-hidden /> {tr('nav.drivers')}
       </span>
       {(['on_duty', 'available', 'off_duty'] as DriverAvailability[]).map((a) => (
         <span key={a} className="text-navy-700">
-          <span className="font-heading font-extrabold text-navy-900">{n(a)}</span> {AVAILABILITY[a].label.toLowerCase()}
+          <span className="font-heading font-extrabold text-navy-900">{n(a)}</span> {tr(`drivers.${a}`).toLowerCase()}
         </span>
       ))}
       <ChevronRight size={18} className="ml-auto text-navy-700" aria-hidden />
