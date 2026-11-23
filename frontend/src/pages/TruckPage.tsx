@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { ArrowLeft, Clock, Thermometer } from 'lucide-react'
+import { ArrowLeft, BatteryCharging, Clock, Cog, Disc, Gauge, Lock, MapPin, Navigation, Thermometer, type LucideIcon } from 'lucide-react'
 import { getReadings, getTruck } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import { useLiveEvents, useThrottled } from '../services/live'
@@ -8,11 +8,15 @@ import StatusBadge from '../components/StatusBadge'
 import Pressure from '../components/Pressure'
 import TyreLayout from '../components/TyreLayout'
 import TyreChart from '../components/TyreChart'
+import FleetMap from '../components/FleetMap'
+import PlanBadge from '../components/PlanBadge'
 import { ErrorBox, Loading } from '../components/PageState'
 import { formatTemp, kpaToPsi } from '../lib/units'
 import { formatTimeIST, timeAgo } from '../lib/format'
 import { positionName } from '../lib/tyreLayout'
-import type { TyreWithStatus } from '../types'
+import { hasPro, planOf } from '../lib/plans'
+import { nearestTown } from '../lib/geo'
+import type { TruckSummary, TyreWithStatus } from '../types'
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000
 
@@ -79,9 +83,12 @@ export default function TruckPage() {
       {/* Truck header */}
       <div className="mt-2 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-bold tracking-wide">{truck.reg_no}</h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-wide">{truck.reg_no}</h1>
+            <PlanBadge plan={planOf(truck)} />
+          </div>
           <p className="text-sm text-navy-700">
-            {truck.make} {truck.model} · {truck.tyres.length} tyres
+            {truck.make} {truck.model} · {truck.axle_config === '10W' ? '10-wheel (2 rear axles)' : '6-wheel (1 rear axle)'}
           </p>
           <p className="mt-1 inline-flex items-center gap-1 text-sm text-navy-700">
             <Clock size={14} aria-hidden /> Last seen {timeAgo(truck.last_seen_at)}
@@ -125,6 +132,13 @@ export default function TruckPage() {
             <p className="text-navy-700">Select a tyre.</p>
           )}
         </section>
+      </div>
+
+      {/* Battery, location, engine */}
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <BatteryCard truck={truck} />
+        <LocationCard truck={truck} />
+        <EngineCards truck={truck} />
       </div>
 
       {/* All tyres at a glance */}
@@ -202,4 +216,117 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
 function worstTyre(tyres: TyreWithStatus[]): TyreWithStatus | undefined {
   const rank = { critical: 0, warning: 1, offline: 2, ok: 3 }
   return [...tyres].sort((a, b) => rank[a.status] - rank[b.status])[0]
+}
+
+function Panel({ title, icon: Icon, children, className = '' }: { title: string; icon: LucideIcon; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={`min-w-0 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 ${className}`}>
+      <h2 className="mb-2 flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-navy-700">
+        <Icon size={18} className="text-green-700" aria-hidden /> {title}
+      </h2>
+      {children}
+    </section>
+  )
+}
+
+/** Truck battery (24 V). The device doesn't send it yet, so this usually says "No data yet". */
+function BatteryCard({ truck }: { truck: TruckSummary }) {
+  const v = truck.battery_v
+  return (
+    <Panel title="Battery" icon={BatteryCharging}>
+      {v == null ? (
+        <>
+          <p className="font-semibold">No data yet</p>
+          <p className="mt-1 text-sm text-navy-700">
+            Battery voltage will show here once the EcoStream device starts sending it.
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="font-heading text-3xl font-extrabold">
+            {v.toFixed(1)} <span className="text-base font-semibold text-navy-700">V</span>
+          </p>
+          <p className="text-sm text-navy-700">24 V system{truck.battery_ts ? ` · ${timeAgo(truck.battery_ts)}` : ''}</p>
+        </>
+      )}
+    </Panel>
+  )
+}
+
+/** Last known position on the corridor map, with the nearest town and a Maps link. */
+function LocationCard({ truck }: { truck: TruckSummary }) {
+  const has = truck.lat != null && truck.lon != null
+  const town = has ? nearestTown(truck.lat!, truck.lon!) : null
+  return (
+    <Panel title="Location" icon={MapPin}>
+      {has ? (
+        <>
+          <p className="font-semibold">
+            {town!.km < 5 ? `In ${town!.name}` : `About ${Math.round(town!.km)} km from ${town!.name}`}
+          </p>
+          <p className="text-xs text-navy-700">
+            {truck.lat!.toFixed(4)}, {truck.lon!.toFixed(4)} · {timeAgo(truck.last_seen_at)}
+          </p>
+          <div className="mt-3">
+            <FleetMap trucks={[truck]} />
+          </div>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${truck.lat},${truck.lon}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border-2 border-green-700 text-sm font-semibold text-green-700 hover:bg-green-50"
+          >
+            <Navigation size={16} aria-hidden /> Open in Google Maps
+          </a>
+        </>
+      ) : (
+        <p className="text-sm text-navy-700">No GPS position yet.</p>
+      )}
+    </Panel>
+  )
+}
+
+const ENGINE_ITEMS: { title: string; icon: LucideIcon; text: string }[] = [
+  { title: 'Engine health', icon: Cog, text: 'Coolant, oil pressure and fault codes (DTC), explained in plain words.' },
+  { title: 'Brakes', icon: Disc, text: 'Air brake pressure, front and rear.' },
+  { title: 'Failure prediction', icon: Gauge, text: 'Warning before a part fails, from engine trends.' },
+]
+
+/**
+ * Pro features. Lite trucks see them locked with an Upgrade link.
+ * Pro/Fleet trucks: the engine (CAN/J1939) plug-in isn't built yet, so we say that plainly.
+ */
+function EngineCards({ truck }: { truck: TruckSummary }) {
+  const pro = hasPro(planOf(truck))
+  return (
+    <section className="min-w-0 space-y-3 lg:col-span-1">
+      {ENGINE_ITEMS.map(({ title, icon: Icon, text }) =>
+        pro ? (
+          <div key={title} className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200">
+            <p className="flex items-center gap-2 font-semibold">
+              <Icon size={18} className="text-green-700" aria-hidden /> {title}
+            </p>
+            <p className="mt-1 text-sm text-navy-700">{text}</p>
+            <p className="mt-1 text-xs font-semibold text-navy-700">Not connected yet: needs the engine (CAN) plug-in.</p>
+          </div>
+        ) : (
+          <Link
+            key={title}
+            to="/plans"
+            className="block rounded-xl bg-gray-50 p-4 ring-1 ring-gray-200 transition hover:ring-green-500"
+            aria-label={`${title}: available in Pro. See plans.`}
+          >
+            <p className="flex items-center justify-between gap-2 font-semibold text-navy-700">
+              <span className="flex items-center gap-2">
+                <Icon size={18} aria-hidden /> {title}
+              </span>
+              <Lock size={16} aria-hidden />
+            </p>
+            <p className="mt-1 text-sm text-navy-700/80">{text}</p>
+            <p className="mt-2 text-sm font-semibold text-green-700">Available in Pro – Upgrade →</p>
+          </Link>
+        ),
+      )}
+    </section>
+  )
 }

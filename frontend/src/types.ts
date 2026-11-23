@@ -25,6 +25,12 @@ export type Severity = 'warning' | 'critical'
 /** Status shown for one tyre. */
 export type TyreStatus = 'ok' | 'warning' | 'critical' | 'offline'
 
+/**
+ * Subscription plan of a truck (see the Plans page). Not in the database yet:
+ * the mock data sets it; with the real API it is missing and the app treats it as Lite.
+ */
+export type Plan = 'lite' | 'pro' | 'fleet'
+
 /** Status shown for a whole truck (worst open alert). */
 export type TruckStatus = 'ok' | 'warning' | 'critical'
 
@@ -38,6 +44,8 @@ export interface Truck {
   model: string
   axle_config: AxleConfig
   created_at: string
+  /** NEW, optional: subscription plan. Missing = Lite. Needs a column (docs/FRONTEND_DATA_NEEDS.md). */
+  plan?: Plan
 }
 
 export interface Tyre {
@@ -111,6 +119,12 @@ export interface TruckSummary extends Truck {
   lon: number | null
   open_alerts: number
   tyres: TyreWithStatus[]
+  /**
+   * NEW, optional: truck battery voltage (24 V system) from the device, and when it was read.
+   * Not sent by the API or the simulator yet, so the Truck page shows "No data yet".
+   */
+  battery_v?: number | null
+  battery_ts?: string | null
 }
 
 /** One item of GET /api/garages/nearest */

@@ -55,6 +55,7 @@ const trucks: Truck[] = [
     model: 'Signa 4825.T',
     axle_config: '6W',
     created_at: '2026-11-01T00:00:00Z',
+    plan: 'lite',
   },
   {
     id: 'truck-2',
@@ -64,6 +65,7 @@ const trucks: Truck[] = [
     model: '3520',
     axle_config: '10W',
     created_at: '2026-11-01T00:00:00Z',
+    plan: 'pro',
   },
 ]
 

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { STATUS_STYLE } from '../lib/status'
 import type { TruckSummary } from '../types'
+import { TOWNS } from '../lib/geo'
 
 /*
  * Light "live map" card for the owner dashboard (Stitch: Fleet Command Center map widget).
@@ -14,15 +15,6 @@ const BOX = { minLat: 11.0, maxLat: 13.3, minLon: 77.8, maxLon: 81.0 }
 const W = 600
 const H = 340
 
-const TOWNS: { name: string; lat: number; lon: number }[] = [
-  { name: 'Chennai', lat: 13.08, lon: 80.27 },
-  { name: 'Sriperumbudur', lat: 12.96, lon: 79.95 },
-  { name: 'Vellore', lat: 12.92, lon: 79.13 },
-  { name: 'Krishnagiri', lat: 12.52, lon: 78.22 },
-  { name: 'Dharmapuri', lat: 12.13, lon: 78.16 },
-  { name: 'Salem', lat: 11.66, lon: 78.15 },
-  { name: 'Namakkal', lat: 11.22, lon: 78.17 },
-]
 
 function project(lat: number, lon: number): [number, number] {
   const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v))

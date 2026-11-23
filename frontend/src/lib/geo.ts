@@ -49,3 +49,24 @@ export function isOpenNow(
   const close = toMinutes(g.closes)
   return open <= close ? t >= open && t < close : t >= open || t < close
 }
+
+/** Towns along our corridor (Chennai - Salem - Namakkal), used by the map and "near ..." labels. */
+export const TOWNS: { name: string; lat: number; lon: number }[] = [
+  { name: 'Chennai', lat: 13.08, lon: 80.27 },
+  { name: 'Sriperumbudur', lat: 12.96, lon: 79.95 },
+  { name: 'Vellore', lat: 12.92, lon: 79.13 },
+  { name: 'Krishnagiri', lat: 12.52, lon: 78.22 },
+  { name: 'Dharmapuri', lat: 12.13, lon: 78.16 },
+  { name: 'Salem', lat: 11.66, lon: 78.15 },
+  { name: 'Namakkal', lat: 11.22, lon: 78.17 },
+]
+
+/** Closest corridor town to a point, with the straight-line distance in km. */
+export function nearestTown(lat: number, lon: number): { name: string; km: number } {
+  let best = { name: TOWNS[0].name, km: Infinity }
+  for (const t of TOWNS) {
+    const km = haversineKm(lat, lon, t.lat, t.lon)
+    if (km < best.km) best = { name: t.name, km }
+  }
+  return best
+}
