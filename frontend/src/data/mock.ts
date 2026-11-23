@@ -56,6 +56,7 @@ const trucks: Truck[] = [
     axle_config: '6W',
     created_at: '2026-11-01T00:00:00Z',
     plan: 'lite',
+    goods_type: 'Textile bales',
   },
   {
     id: 'truck-2',
@@ -66,6 +67,7 @@ const trucks: Truck[] = [
     axle_config: '10W',
     created_at: '2026-11-01T00:00:00Z',
     plan: 'pro',
+    goods_type: 'Cement bags',
   },
 ]
 

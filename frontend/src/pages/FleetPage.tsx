@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { BellRing, ChevronRight, Clock, Search, Store, Truck, Wrench, type LucideIcon } from 'lucide-react'
-import { getAlerts, getNearestGarages, getTrucks } from '../services/api'
+import { BellRing, ChevronRight, Clock, Package, Search, Store, Truck, UserRound, Users, Wrench, type LucideIcon } from 'lucide-react'
+import { getAlerts, getDrivers, getNearestGarages, getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import { useLiveEvents, useThrottled } from '../services/live'
 import StatusBadge from '../components/StatusBadge'
@@ -13,7 +13,8 @@ import { ALERT_TITLE, STATUS_STYLE, formatAlertValue } from '../lib/status'
 import { timeAgo } from '../lib/format'
 import { SEVERITY_RANK, hoursUntilUnsafe, unsafeLabel } from '../lib/alerts'
 import { positionName } from '../lib/tyreLayout'
-import type { Alert, TruckSummary, TyreStatus } from '../types'
+import { AVAILABILITY } from '../lib/drivers'
+import type { Alert, Driver, DriverAvailability, TruckSummary, TyreStatus } from '../types'
 
 /**
  * Owner home - "Fleet Command Center" (Stitch v2: EcoStream Logistic Owner Portal).
@@ -39,6 +40,10 @@ function fleetState(t: TruckSummary, now = Date.now()): FleetState {
 export default function FleetPage() {
   const trucksQ = useApi(getTrucks, [])
   const alertsQ = useApi(() => getAlerts(true), [])
+  // Drivers are demo-only for now (null when not connected): then the driver row is hidden.
+  const driversQ = useApi(getDrivers, [])
+  const drivers = driversQ.data
+  const driverOf = new Map((drivers ?? []).filter((d) => d.truck_id).map((d) => [d.truck_id!, d]))
   const refresh = useThrottled(() => {
     trucksQ.reload()
     alertsQ.reload()
@@ -50,21 +55,18 @@ export default function FleetPage() {
   const alerts = alertsQ.data ?? []
   const byId = new Map((trucks ?? []).map((t) => [t.id, t]))
 
-  // Worst open alert per truck
-  const topAlert = new Map<string, Alert>()
-  for (const a of alerts) {
-    const cur = topAlert.get(a.truck_id)
-    if (!cur || RANK[a.severity] > RANK[cur.severity]) topAlert.set(a.truck_id, a)
-  }
   // Most urgent first: severity, then the soonest "unsafe in", then newest.
   const eta = (a: Alert) => hoursUntilUnsafe(a, byId.get(a.truck_id)) ?? Infinity
   const urgent = [...alerts].sort(
     (a, b) => RANK[b.severity] - RANK[a.severity] || eta(a) - eta(b) || b.created_at.localeCompare(a.created_at),
   )
+  // Most urgent open alert per truck
+  const topAlert = new Map<string, Alert>()
+  for (const a of urgent) if (!topAlert.has(a.truck_id)) topAlert.set(a.truck_id, a)
 
   const q = query.trim().toLowerCase().replace(/\s+/g, '')
   const shown = (trucks ?? []).filter(
-    (t) => !q || `${t.reg_no}${t.make}${t.model}`.toLowerCase().replace(/\s+/g, '').includes(q),
+    (t) => !q || `${t.reg_no}${t.make}${t.model}${t.goods_type ?? ''}`.toLowerCase().replace(/\s+/g, '').includes(q),
   )
 
   return (
@@ -100,6 +102,7 @@ export default function FleetPage() {
       {trucks && trucks.length > 0 && (
         <>
           <KpiPods trucks={trucks} openAlerts={alerts.length} />
+          {drivers && <DriverStrip drivers={drivers} />}
 
           {/* ---------- Needs attention + map ---------- */}
           <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-12">
@@ -160,7 +163,7 @@ export default function FleetPage() {
               <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {shown.map((t) => (
                   <li key={t.id}>
-                    <TruckCard truck={t} issue={topAlert.get(t.id)} />
+                    <TruckCard truck={t} issue={topAlert.get(t.id)} driver={driverOf.get(t.id)} />
                   </li>
                 ))}
               </ul>
@@ -304,7 +307,7 @@ function Incident({ alert, truck }: { alert: Alert; truck?: TruckSummary }) {
   )
 }
 
-function TruckCard({ truck, issue }: { truck: TruckSummary; issue?: Alert }) {
+function TruckCard({ truck, issue, driver }: { truck: TruckSummary; issue?: Alert; driver?: Driver }) {
   const state = fleetState(truck)
   const counts = truck.tyres.reduce<Partial<Record<TyreStatus, number>>>((acc, t) => {
     acc[t.status] = (acc[t.status] ?? 0) + 1
@@ -330,6 +333,18 @@ function TruckCard({ truck, issue }: { truck: TruckSummary; issue?: Alert }) {
         </div>
         <StatusBadge status={state} />
       </div>
+
+      <ul className="mt-2 space-y-0.5 text-sm text-navy-700">
+        {truck.goods_type && (
+          <li className="flex items-center gap-1.5">
+            <Package size={14} className="shrink-0" aria-hidden /> <span className="truncate">{truck.goods_type}</span>
+          </li>
+        )}
+        <li className="flex items-center gap-1.5">
+          <UserRound size={14} className="shrink-0" aria-hidden />
+          <span className="truncate">{driver ? driver.name : 'No driver assigned'}</span>
+        </li>
+      </ul>
 
       {issue && (
         <p
@@ -359,6 +374,27 @@ function TruckCard({ truck, issue }: { truck: TruckSummary; issue?: Alert }) {
         </ul>
         <ChevronRight size={18} className="shrink-0 text-navy-700" aria-hidden />
       </div>
+    </Link>
+  )
+}
+
+/** One line with driver availability counts, linking to the Drivers page. */
+function DriverStrip({ drivers }: { drivers: Driver[] }) {
+  const n = (a: DriverAvailability) => drivers.filter((d) => d.availability === a).length
+  return (
+    <Link
+      to="/drivers"
+      className="mt-3 flex min-h-[48px] flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-white px-4 py-2 text-sm shadow-sm ring-1 ring-green-500/10 transition hover:ring-green-500"
+    >
+      <span className="inline-flex items-center gap-2 font-bold">
+        <Users size={18} className="text-green-700" aria-hidden /> Drivers
+      </span>
+      {(['on_duty', 'available', 'off_duty'] as DriverAvailability[]).map((a) => (
+        <span key={a} className="text-navy-700">
+          <span className="font-heading font-extrabold text-navy-900">{n(a)}</span> {AVAILABILITY[a].label.toLowerCase()}
+        </span>
+      ))}
+      <ChevronRight size={18} className="ml-auto text-navy-700" aria-hidden />
     </Link>
   )
 }

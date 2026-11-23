@@ -56,6 +56,8 @@ export interface Truck {
   created_at: string
   /** NEW, optional: subscription plan. Missing = Lite. Needs a column (docs/FRONTEND_DATA_NEEDS.md). */
   plan?: Plan
+  /** NEW, optional: what the truck usually carries, e.g. "Cement bags". Mock only for now. */
+  goods_type?: string | null
 }
 
 export interface Tyre {
