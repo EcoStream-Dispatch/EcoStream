@@ -21,9 +21,9 @@ import Header from '../components/Header'
 import Footer from '../components/Footer'
 import Wordmark from '../components/Wordmark'
 import LanguageSwitch from '../components/LanguageSwitch'
-import { asset } from '../lib/asset'
 import { useLang } from '../lib/i18n'
 import StaticStory from '../landing3d/StaticStory'
+import { PHOTO, PhotoPlate } from '../landing3d/PhotoHero'
 
 /*
  * Public landing page - layout from the Stitch screen "EcoStream Fleet Landing Page"
@@ -141,20 +141,12 @@ export default function LandingPage({ embedded = false }: { embedded?: boolean }
             ))}
           </ul>
 
-          {/* Hero visual: the logo on a card, with the live-gateway chip from the design */}
-          <div className="relative mt-12 flex w-full max-w-5xl items-center justify-center overflow-hidden rounded-2xl bg-white py-12 shadow-2xl ring-1 ring-green-500/15 sm:py-16">
-            <img
-              src={asset('logo.png')}
-              alt="EcoStream logo: a connected truck inside a green leaf-shaped E, with the five pillars"
-              className="w-64 sm:w-96"
-            />
-            <div className="absolute left-4 top-4 flex items-center gap-3 rounded-xl bg-navy-900 px-3.5 py-2.5 text-left text-white shadow-lg sm:left-6 sm:top-6">
-              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-green-300" aria-hidden />
-              <span>
-                <span className="block font-heading text-[10px] font-bold uppercase tracking-wider text-green-300">On-truck gateway</span>
-                <span className="block text-xs font-semibold text-white/90">ESP32-S3 · TPMS · GPS</span>
-              </span>
-            </div>
+          {/* Hero visual: the highway photo with the tyre sensor points (no animation here) */}
+          <div
+            className="relative mt-12 w-full max-w-5xl overflow-hidden rounded-2xl shadow-2xl ring-1 ring-green-500/15"
+            style={{ aspectRatio: `${PHOTO.w} / ${PHOTO.h}`, containerType: 'size' }}
+          >
+            <PhotoPlate animate={false} />
           </div>
         </section>
         )}

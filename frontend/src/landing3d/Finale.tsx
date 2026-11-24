@@ -4,6 +4,7 @@ import { ArrowRight, Package, Truck, UserRound, type LucideIcon } from 'lucide-r
 import { useLang } from '../lib/i18n'
 import { PILLARS } from '../pages/LandingPage'
 import { story, type SectionId } from './store'
+import { PhotoPlate } from './PhotoHero'
 
 /*
  * HTML for the last story sections: the five pillars list, the Owner / Driver / Shipper
@@ -139,14 +140,41 @@ export function RolesSection() {
   )
 }
 
+/** The real photo comes back at the very end: the 3D truck "arrives" as the real one. */
+function usePhotoBookend() {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    let raf = 0
+    const tick = () => {
+      const p = story.progress.finale
+      const x = Math.min(1, Math.max(0, (p - 0.5) / 0.28))
+      const a = x * x * (3 - 2 * x)
+      if (ref.current) {
+        ref.current.style.opacity = String(a)
+        ref.current.style.filter = a < 0.999 ? `blur(${((1 - a) * 8).toFixed(2)}px)` : ''
+        ref.current.style.visibility = a < 0.01 ? 'hidden' : 'visible'
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+  return ref
+}
+
 export function FinaleSection() {
   const { t } = useLang()
   const ref = useSectionFade('finale', 0.45, 2)
+  const photo = usePhotoBookend()
   const [asked, setAsked] = useState(false)
   return (
     <section data-story="finale" className="relative" style={{ height: '240vh' }}>
-      <div className="sticky top-0 flex h-[100svh] items-end px-4 pb-8 md:items-start md:pb-0 md:pt-28">
-        <div ref={ref} className="mx-auto w-full max-w-3xl text-center" style={{ opacity: 0, visibility: 'hidden' }}>
+      <div className="sticky top-0 flex h-[100svh] items-start overflow-hidden px-4 pt-24 md:pt-28">
+        <div ref={photo} className="absolute inset-0" style={{ opacity: 0, visibility: 'hidden', containerType: 'size' }} aria-hidden>
+          <PhotoPlate animate={false} showPoints={false} />
+          <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/50 to-transparent" />
+        </div>
+        <div ref={ref} className="relative mx-auto w-full max-w-3xl text-center" style={{ opacity: 0, visibility: 'hidden' }}>
           <p className="inline-block rounded-full bg-white/90 px-3 py-1 font-heading text-[11px] font-bold uppercase tracking-[0.3em] text-green-700 shadow">
             {t('l3d.finale.kicker')}
           </p>

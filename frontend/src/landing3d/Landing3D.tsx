@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowDown, ArrowRight } from 'lucide-react'
 import Lenis from 'lenis'
 import 'lenis/dist/lenis.css'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { useProgress } from '@react-three/drei'
 import Experience from './Experience'
-import Loader from './Loader'
+import PhotoHero from './PhotoHero'
 import { FinaleSection, PillarsList, RolesSection } from './Finale'
 import { Body, HotLeakPanel, JourneySteps, Kicker, LeakReadout, StorySection, Title } from './StoryCard'
 import { SECTIONS, detectLowPower, story, type SectionId } from './store'
@@ -29,11 +27,12 @@ gsap.registerPlugin(ScrollTrigger)
  */
 export default function Landing3D() {
   const { t } = useLang()
-  const { progress } = useProgress()
   const [startAt, setStartAt] = useState<number | null>(null)
   const [paused, setPaused] = useState(false)
   const storyEnd = useRef<HTMLDivElement>(null)
-  const heroText = useRef<HTMLDivElement>(null)
+  const photo = useRef<HTMLDivElement>(null)
+  const readyRef = useRef(false)
+  const heroProgress = useRef(0)
 
   // Decide once whether this device gets the lighter version
   useState(() => {
@@ -43,6 +42,26 @@ export default function Landing3D() {
 
   const onReady = useCallback((t: number) => setStartAt(t), [])
   const ready = startAt !== null
+
+  /*
+   * The photo hero covers the 3D scene at first. Scrolling fades it out (with a little
+   * blur and zoom) so the real truck "becomes" its 3D digital twin. Until the 3D is ready
+   * the photo stays fully on top, so nobody scrolls into a half-loaded scene.
+   */
+  const applyPhotoFade = useCallback(() => {
+    const el = photo.current
+    if (!el) return
+    const p = readyRef.current ? Math.min(1, heroProgress.current / 0.4) : 0
+    const e = p * p * (3 - 2 * p)
+    el.style.opacity = String(1 - e)
+    el.style.filter = e > 0.001 ? `blur(${(e * 10).toFixed(2)}px)` : ''
+    el.style.transform = `scale(${1 + e * 0.08})`
+    el.style.visibility = e >= 0.999 ? 'hidden' : 'visible'
+  }, [])
+  useEffect(() => {
+    readyRef.current = ready
+    applyPhotoFade()
+  }, [ready, applyPhotoFade])
 
   // Smooth scrolling + scroll progress for each story section
   useEffect(() => {
@@ -80,18 +99,18 @@ export default function Landing3D() {
         }),
       )
     }
-    // Hero text fades and lifts away as you start scrolling
-    if (heroText.current) {
-      triggers.push(
-        ScrollTrigger.create({
-          trigger: '[data-story="hero"]',
-          start: 'top top',
-          end: '35% top',
-          scrub: true,
-          animation: gsap.fromTo(heroText.current, { opacity: 1, y: 0 }, { opacity: 0, y: -40, ease: 'none' }),
-        }),
-      )
-    }
+    // Photo hero fades into the 3D scene as you start scrolling
+    triggers.push(
+      ScrollTrigger.create({
+        trigger: '[data-story="hero"]',
+        start: 'top top',
+        end: 'bottom bottom',
+        onUpdate: (self) => {
+          heroProgress.current = self.progress
+          applyPhotoFade()
+        },
+      }),
+    )
     return () => {
       triggers.forEach((tr) => tr.kill())
       gsap.ticker.remove(tick)
@@ -99,7 +118,7 @@ export default function Landing3D() {
       story.visible = true
       SECTIONS.forEach((s) => (story.progress[s] = 0))
     }
-  }, [])
+  }, [applyPhotoFade])
 
   // Pointer / tilt parallax
   useEffect(() => {
@@ -127,8 +146,6 @@ export default function Landing3D() {
         <Experience startAt={startAt} onReady={onReady} paused={paused} />
       </div>
 
-      <Loader done={ready} progress={progress} />
-
       {/* ---------- Header over the scene ---------- */}
       <header className="absolute inset-x-0 top-0 z-20">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
@@ -149,41 +166,10 @@ export default function Landing3D() {
       </header>
 
       <main className="relative z-10">
-        {/* ---------- 1. Hero ---------- */}
+        {/* ---------- 1. Hero: photo, then the 3D twin ---------- */}
         <section data-story="hero" className="relative h-[230vh]">
-          <div className="sticky top-0 flex h-[100svh] flex-col justify-end">
-            <div
-              ref={heroText}
-              className={`bg-gradient-to-t from-navy-900/80 via-navy-900/45 to-transparent px-4 pb-10 pt-24 transition-all duration-1000 md:pb-14 ${
-                ready ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'
-              }`}
-              style={{ transitionDelay: ready ? '1.6s' : '0s' }}
-            >
-              <div className="mx-auto max-w-6xl text-white">
-                <h1 className="sr-only">EcoStream</h1>
-                <p className="font-heading text-xs font-bold uppercase tracking-[0.35em] text-green-300 md:text-sm">
-                  Predict · Protect · Perform
-                </p>
-                <p className="mt-3 max-w-2xl text-xl font-semibold leading-snug md:text-3xl">{t('hero.line')}</p>
-                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                  <Link
-                    to="/login"
-                    className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-green-700 px-8 font-heading font-semibold text-white shadow-lg shadow-green-900/30 transition hover:bg-green-500"
-                  >
-                    {t('nav.login')} <ArrowRight size={18} aria-hidden />
-                  </Link>
-                  <a
-                    href="#how-it-works"
-                    className="inline-flex min-h-[52px] items-center justify-center rounded-xl border-2 border-white/70 px-8 font-heading font-semibold text-white transition hover:bg-white hover:text-navy-900"
-                  >
-                    {t('hero.how')}
-                  </a>
-                </div>
-                <p className="mt-6 hidden items-center gap-2 text-sm text-white/75 md:flex">
-                  <ArrowDown size={16} className="animate-bounce" aria-hidden /> {t('l3d.scroll')}
-                </p>
-              </div>
-            </div>
+          <div className="sticky top-0 h-[100svh] overflow-hidden">
+            <PhotoHero ref={photo} loading3d={!ready} className="origin-center will-change-[opacity,filter,transform]" />
           </div>
         </section>
 

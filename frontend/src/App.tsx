@@ -13,7 +13,7 @@ import ProfilePage from './pages/ProfilePage'
 import DriversPage from './pages/DriversPage'
 import ReportsPage from './pages/ReportsPage'
 import { Loading } from './components/PageState'
-import Loader from './landing3d/Loader'
+import PhotoHero from './landing3d/PhotoHero'
 import { hasWebGL } from './landing3d/store'
 
 // The Truck page pulls in the chart library (recharts), which is big.
@@ -30,7 +30,7 @@ function HomeRoute() {
   const forced = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('static')
   if (reduced || forced || !hasWebGL()) return <LandingPage />
   return (
-    <Suspense fallback={<Loader done={false} />}>
+    <Suspense fallback={<PhotoHero loading3d />}>
       <Landing3D />
     </Suspense>
   )
