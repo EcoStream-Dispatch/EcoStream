@@ -59,9 +59,13 @@ function Shipment() {
             <Wordmark className="text-base" />
           </Link>
           <div className="flex items-center gap-2">
-            <span className="rounded-full bg-navy-900 px-2 py-0.5 text-xs font-semibold text-white">Shipper preview</span>
+            <span className="whitespace-nowrap rounded-full bg-navy-900 px-2 py-0.5 text-xs font-semibold text-white">
+              Shipper<span className="hidden sm:inline"> preview</span>
+            </span>
             {USING_MOCK_DATA && (
-              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-warning/40">Demo data</span>
+              <span className="whitespace-nowrap rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-warning/40">
+                Demo<span className="hidden sm:inline"> data</span>
+              </span>
             )}
             {session && (
               <button onClick={signOut} className="rounded-lg p-2 text-navy-700 hover:bg-gray-100" title="Log out">

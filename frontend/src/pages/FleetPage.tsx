@@ -225,10 +225,11 @@ function Pod({
   bar?: number
   to?: string
 }) {
-  const color = tone ? TONE_TEXT[tone] : 'text-navy-900'
+  // A zero count is muted grey, so an empty "OK" or "Critical" pod doesn't shout.
+  const color = tone && value === 0 ? 'text-gray-400' : tone ? TONE_TEXT[tone] : 'text-navy-900'
   const body = (
     <>
-      <div className={`flex items-center justify-between ${tone ? color : 'text-navy-700'}`}>
+      <div className={`flex items-center justify-between ${tone && value > 0 ? color : 'text-navy-700'}`}>
         <span className="font-heading text-[11px] font-bold uppercase tracking-wider">{label}</span>
         <Icon size={18} aria-hidden />
       </div>
@@ -296,9 +297,16 @@ function Incident({ alert, truck }: { alert: Alert; truck?: TruckSummary }) {
       </dl>
 
       <div className="mt-3 flex flex-col items-stretch justify-between gap-2 sm:flex-row sm:items-center">
-        <span className="flex min-w-0 items-center gap-1 text-sm text-navy-700">
-          <Store size={16} className="shrink-0 text-green-700" aria-hidden />
-          <span className="truncate">{g ? `${g.name} (${g.distance_km.toFixed(1)} km)` : garages.loading ? 'Finding garage…' : 'No open garage nearby'}</span>
+        <span className="flex min-w-0 items-start gap-1.5 text-sm text-navy-700">
+          <Store size={16} className="mt-0.5 shrink-0 text-green-700" aria-hidden />
+          {g ? (
+            <span className="min-w-0">
+              <span className="block truncate font-semibold text-navy-900">{g.name}</span>
+              <span className="block text-xs">{g.distance_km.toFixed(1)} km away · {g.open_now ? 'open now' : 'closed now'}</span>
+            </span>
+          ) : (
+            <span>{garages.loading ? 'Finding garage…' : 'No open garage nearby'}</span>
+          )}
         </span>
         <Link
           to={`/alerts/${alert.id}`}

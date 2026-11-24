@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+
 import { Link } from 'react-router-dom'
 import { BatteryCharging, ChevronDown, Cog, Disc, Disc3, Lock, MapPin, Package, ShieldCheck, UserRound, type LucideIcon } from 'lucide-react'
 import {
@@ -31,11 +32,19 @@ const GROUP_ICON: Record<ParamGroup, LucideIcon> = {
 }
 const GROUP_ORDER: ParamGroup[] = ['tyres', 'location', 'power', 'engine', 'brakes', 'cargo', 'driver', 'device']
 
+const RANK = { critical: 2, warning: 1, other: 0 } as const
+const rankOf = (r: Row) => (r.value?.status === 'critical' ? 'critical' : r.value?.status === 'warning' ? 'warning' : 'other')
+const isIssue = (r: Row) => rankOf(r) !== 'other'
+
+/** Phones: a group starts closed unless something in it needs a look. Tablets and up: always open. */
+const isPhone = () => typeof window !== 'undefined' && !window.matchMedia('(min-width: 768px)').matches
+
 const DOT: Record<ParamStatus, string> = {
   ok: 'bg-green-500',
   warning: 'bg-warning',
   critical: 'bg-critical',
-  info: 'bg-navy-700/30',
+  // Just a reading, no good/bad judgement: hollow, so it doesn't look like "no data".
+  info: 'bg-white ring-2 ring-inset ring-navy-700/40',
 }
 
 interface Row {
@@ -76,9 +85,9 @@ export default function ParameterBoard({ truck, role, alerts = [], className = '
     }))
   }, [truck, role, alerts, plan])
 
-  const live = rows.filter((r) => r.access.kind === 'on')
+  const live = rows.filter((r) => r.access.kind === 'on').sort((a, b) => RANK[rankOf(b)] - RANK[rankOf(a)])
   const locked = rows.filter((r) => r.access.kind !== 'on')
-  const issues = live.filter((r) => r.value?.status === 'warning' || r.value?.status === 'critical')
+  const issues = live.filter(isIssue)
   const shown = onlyIssues ? issues : live
 
   return (
@@ -113,28 +122,59 @@ export default function ParameterBoard({ truck, role, alerts = [], className = '
         {GROUP_ORDER.map((g) => {
           const list = shown.filter((r) => r.def.group === g)
           if (!list.length) return null
-          const Icon = GROUP_ICON[g]
-          // A long group (engine data on Pro) takes two columns, so it doesn't leave a tall gap beside it.
-          const wide = list.length > 8
-          return (
-            <div key={g} className={`min-w-0 rounded-xl bg-white shadow-sm ring-1 ring-gray-200 ${wide ? 'md:col-span-2' : ''}`}>
-              <h3 className="flex items-center gap-2 border-b border-gray-100 px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-navy-700">
-                <Icon size={17} className="text-green-700" aria-hidden /> {GROUP_NAME[g]}
-                <span className="ml-auto text-xs font-semibold normal-case tracking-normal text-navy-700/70">{list.length}</span>
-              </h3>
-              <ul className={wide ? 'grid divide-y divide-gray-100 md:grid-cols-2 md:divide-y-0 [&>li]:border-gray-100 md:[&>li]:border-b' : 'divide-y divide-gray-100'}>
-                {list.map((r) => (
-                  <ValueRow key={r.def.key} row={r} />
-                ))}
-              </ul>
-            </div>
-          )
+          return <GroupCard key={g} group={g} list={list} forceOpen={onlyIssues} />
         })}
         {onlyIssues && issues.length === 0 && <p className="rounded-xl bg-white p-4 text-sm text-navy-700 ring-1 ring-gray-200">Nothing needs a look right now.</p>}
       </div>
 
       {(locked.length > 0 || role === 'owner') && !onlyIssues && <LockedList rows={locked} role={role} planName={PLAN_NAME[plan]} />}
     </section>
+  )
+}
+
+function GroupCard({ group, list, forceOpen }: { group: ParamGroup; list: Row[]; forceOpen: boolean }) {
+  const issueCount = list.filter(isIssue).length
+  const [open, setOpen] = useState(() => !isPhone() || issueCount > 0)
+  const shown = open || forceOpen
+  const Icon = GROUP_ICON[group]
+  // A long group (engine data on Pro) takes two columns, so it doesn't leave a tall gap beside it.
+  const wide = list.length > 8
+  const listId = `group-${group}`
+  return (
+    <div className={`min-w-0 rounded-xl bg-white shadow-sm ring-1 ring-gray-200 ${wide ? 'md:col-span-2' : ''}`}>
+      <h3>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={shown}
+          aria-controls={listId}
+          className={`flex min-h-[44px] w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-bold uppercase tracking-wide text-navy-700 md:pointer-events-none ${
+            shown ? 'border-b border-gray-100' : 'md:border-b md:border-gray-100'
+          }`}
+        >
+          <Icon size={17} className="shrink-0 text-green-700" aria-hidden /> {GROUP_NAME[group]}
+          <span className="ml-auto flex items-center gap-2 text-xs font-semibold normal-case tracking-normal">
+            {issueCount > 0 ? (
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 ring-1 ring-warning/40">{issueCount} need a look</span>
+            ) : (
+              <span className="text-green-700">All normal</span>
+            )}
+            <span className="text-navy-700/70">{list.length}</span>
+            <ChevronDown size={18} className={`text-navy-700 transition md:hidden ${shown ? 'rotate-180' : ''}`} aria-hidden />
+          </span>
+        </button>
+      </h3>
+      <ul
+        id={listId}
+        className={`${shown ? '' : 'hidden'} ${
+          wide ? 'divide-y divide-gray-100 md:grid md:grid-cols-2 md:divide-y-0 md:[&>li]:border-b md:[&>li]:border-gray-100' : 'divide-y divide-gray-100 md:block'
+        } ${wide && !shown ? 'md:grid' : ''}`}
+      >
+        {list.map((r) => (
+          <ValueRow key={r.def.key} row={r} />
+        ))}
+      </ul>
+    </div>
   )
 }
 
@@ -194,10 +234,12 @@ function LockedList({ rows, role, planName }: { rows: Row[]; role: Role; planNam
         aria-expanded={open}
         className="flex min-h-[48px] w-full items-center gap-2 px-4 py-2 text-left text-sm font-semibold text-navy-900"
       >
-        <Lock size={16} className="text-navy-700" aria-hidden />
-        {rows.length} data points not on this truck ({planName} plan)
-        {role === 'owner' && <span className="font-normal text-navy-700"> · and {PARKED.length} planned for later</span>}
-        <ChevronDown size={18} className={`ml-auto transition ${open ? 'rotate-180' : ''}`} aria-hidden />
+        <Lock size={16} className="shrink-0 text-navy-700" aria-hidden />
+        <span className="min-w-0">
+          {rows.length} data points not on this truck ({planName} plan)
+          {role === 'owner' && <span className="block text-xs font-normal text-navy-700 sm:inline sm:text-sm"><span className="hidden sm:inline"> · </span>and {PARKED.length} planned for later</span>}
+        </span>
+        <ChevronDown size={18} className={`ml-auto shrink-0 transition ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
       {open && (
         <div className="border-t border-gray-200 px-4 pb-4 pt-2">

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { BadgeCheck, Disc3, Gauge, LogOut, Mountain, Navigation, Phone, Siren, Star, Thermometer, UserRound, Volume2, Wrench, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Cog, Disc3, Fuel, Gauge, LogOut, Mountain, Navigation, Phone, Siren, Star, Thermometer, UserRound, Volume2, Wrench, X, type LucideIcon } from 'lucide-react'
 import { getAlerts, getDrivers, getNearestGarages, getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import { LiveProvider, useLiveEvents, useThrottled } from '../services/live'
@@ -29,7 +29,8 @@ import type { Alert, Driver, TruckSummary } from '../types'
  *   - big alert banner when something is wrong (navy, readable at night), with
  *     Play voice / Navigate to garage
  *   - tyre layout, next open garage, map
- * Engine data is Phase 4 (CAN/J1939), so that card is shown locked.
+ *   - 4 gauges (tyre pressure, hottest tyre, fuel, engine) and every driving data point
+ *     for the truck's plan (ParameterBoard). Engine and fuel need the CAN plug-in (Pro).
  * Trip / order details are Phase 3, so they are left out.
  *
  * NOTE: there are no driver accounts in the backend yet. For now this shows the first
@@ -128,7 +129,8 @@ function Cockpit() {
                     {truck.make} {truck.model} · {truck.tyres.length} tyres
                   </p>
                   {USING_MOCK_DATA && (trucksQ.data?.length ?? 0) > 1 && (
-                    <div className="mt-1.5 flex flex-wrap gap-1.5" role="group" aria-label="Demo: pick a truck">
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5" role="group" aria-label="Demo: pick a truck">
+                      <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-800">Demo: switch truck</span>
                       {trucksQ.data!.map((tk, i) => (
                         <button
                           key={tk.id}
@@ -542,35 +544,65 @@ function SensorCards({ truck }: { truck: TruckSummary }) {
   const okCount = truck.tyres.filter((t) => t.status === 'ok').length
   const allOk = okCount === truck.tyres.length
 
+  const params = truck.params ?? {}
+  const fuel = params.fuel_level_probe ?? params.fuel_level_can
+  const fault = params.fault_codes
+  const coolant = params.coolant_temperature
+  const tone = (st?: string) => (st === 'critical' ? 'text-critical' : st === 'warning' ? 'text-amber-800' : 'text-green-700')
+  const needsPro = <p className="text-sm text-navy-700">Comes with the engine plug-in (Pro plan).</p>
+
+  // The 4 cockpit gauges from the docs: tyre pressure, tyre heat, fuel, engine.
   return (
-    <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-      <Card label="TPMS" title="Tyre pressure" icon={Disc3}>
-        {avgKpa !== null ? (
-          <>
-            <Big value={kpaToPsi(avgKpa).toFixed(0)} unit="psi" />
-            <p className={`mt-1 text-sm font-semibold ${allOk ? 'text-green-700' : 'text-amber-800'}`}>
-              {allOk ? `All ${truck.tyres.length} tyres OK` : `${truck.tyres.length - okCount} of ${truck.tyres.length} need a look`}
-            </p>
-            <p className="text-xs text-navy-700">Average, corrected to 20 °C · {kpaToBar(avgKpa).toFixed(1)} bar</p>
-          </>
-        ) : (
-          <p className="text-sm text-navy-700">No readings yet.</p>
-        )}
-      </Card>
-      <Card label="TPMS" title="Hottest tyre" icon={Thermometer}>
-        {hottest ? (
-          <>
-            <Big value={hottest.latest!.temp_c.toFixed(0)} unit="°C" />
-            <p className={`mt-1 text-sm font-semibold ${hottest.latest!.temp_c > hottest.max_temp_c ? 'text-critical' : 'text-green-700'}`}>
-              {positionName(hottest.position)}
-            </p>
-            <p className="text-xs text-navy-700">Limit {hottest.max_temp_c} °C</p>
-          </>
-        ) : (
-          <p className="text-sm text-navy-700">No readings yet.</p>
-        )}
-      </Card>
-      <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-green-500/10 md:col-span-2 xl:col-span-1">
+    <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 md:gap-4 xl:col-span-2">
+        <Card label="TPMS" title="Tyre pressure" icon={Disc3}>
+          {avgKpa !== null ? (
+            <>
+              <Big value={kpaToPsi(avgKpa).toFixed(0)} unit="psi" />
+              <p className={`mt-1 text-sm font-semibold ${allOk ? 'text-green-700' : 'text-amber-800'}`}>
+                {allOk ? `All ${truck.tyres.length} tyres OK` : `${truck.tyres.length - okCount} of ${truck.tyres.length} need a look`}
+              </p>
+              <p className="text-xs text-navy-700">Average, corrected to 20 °C · {kpaToBar(avgKpa).toFixed(1)} bar</p>
+            </>
+          ) : (
+            <p className="text-sm text-navy-700">No readings yet.</p>
+          )}
+        </Card>
+        <Card label="TPMS" title="Hottest tyre" icon={Thermometer}>
+          {hottest ? (
+            <>
+              <Big value={hottest.latest!.temp_c.toFixed(0)} unit="°C" />
+              <p className={`mt-1 text-sm font-semibold ${hottest.latest!.temp_c > hottest.max_temp_c ? 'text-critical' : 'text-green-700'}`}>
+                {positionName(hottest.position)}
+              </p>
+              <p className="text-xs text-navy-700">Limit {hottest.max_temp_c} °C</p>
+            </>
+          ) : (
+            <p className="text-sm text-navy-700">No readings yet.</p>
+          )}
+        </Card>
+        <Card label="Fuel" title="Fuel left" icon={Fuel}>
+          {fuel ? (
+            <>
+              <p className="font-heading text-2xl font-extrabold tracking-tight md:text-3xl">{fuel.text}</p>
+              {fuel.note && <p className={`mt-1 text-sm font-semibold ${tone(fuel.status)}`}>{fuel.note}</p>}
+            </>
+          ) : (
+            needsPro
+          )}
+        </Card>
+        <Card label="Engine" title="Engine" icon={Cog}>
+          {fault || coolant ? (
+            <>
+              <p className={`font-heading text-lg font-extrabold leading-snug md:text-xl ${tone(fault?.status)}`}>{fault?.text ?? 'No faults'}</p>
+              {coolant && <p className="mt-1 text-sm text-navy-700">Coolant {coolant.text}</p>}
+            </>
+          ) : (
+            needsPro
+          )}
+        </Card>
+      </div>
+      <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-green-500/10">
         <p className="font-heading text-[11px] font-bold uppercase tracking-wider text-navy-700">Tap a tyre</p>
         <TyreBoard truck={truck} />
       </div>
@@ -580,13 +612,13 @@ function SensorCards({ truck }: { truck: TruckSummary }) {
 
 function Card({ label, title, icon: Icon, children }: { label: string; title: string; icon: LucideIcon; children: ReactNode }) {
   return (
-    <div className="flex flex-col rounded-xl bg-white p-5 shadow-sm ring-1 ring-green-500/10">
-      <div className="mb-3 flex items-start justify-between">
+    <div className="flex h-full min-w-0 flex-col rounded-xl bg-white p-4 shadow-sm ring-1 ring-green-500/10 md:p-5">
+      <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <p className="font-heading text-[11px] font-bold uppercase tracking-wider text-navy-700">{label}</p>
-          <h3 className="text-lg font-bold">{title}</h3>
+          <h3 className="text-base font-bold md:text-lg">{title}</h3>
         </div>
-        <span className="rounded-lg bg-green-50 p-1.5 text-green-700">
+        <span className="shrink-0 rounded-lg bg-green-50 p-1.5 text-green-700">
           <Icon size={22} aria-hidden />
         </span>
       </div>
