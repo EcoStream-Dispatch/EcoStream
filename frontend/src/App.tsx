@@ -22,16 +22,27 @@ const TruckPage = lazy(() => import('./pages/TruckPage'))
 const DriverPage = lazy(() => import('./pages/DriverPage'))
 // The 3D landing page (three.js) is only loaded on "/", so the app itself stays light.
 const Landing3D = lazy(() => import('./landing3d/Landing3D'))
+// The photo-real landing page (no three.js): the default.
+const PhotoStory = lazy(() => import('./landing3d/PhotoStory'))
 
-/** 3D landing when the browser can draw it and the user hasn't asked for less motion. */
+/**
+ * Photo-real landing by default. "?3d" shows the 3D digital-twin tour, "?static" the calm
+ * version (also used when the visitor has asked for less motion).
+ */
 function HomeRoute() {
+  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
   const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  // "?static" shows the calm version on purpose (handy for checking it)
-  const forced = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('static')
-  if (reduced || forced || !hasWebGL()) return <LandingPage />
+  if (reduced || params.has('static')) return <LandingPage />
+  if (params.has('3d') && hasWebGL()) {
+    return (
+      <Suspense fallback={<PhotoHero loading3d />}>
+        <Landing3D />
+      </Suspense>
+    )
+  }
   return (
-    <Suspense fallback={<PhotoHero loading3d />}>
-      <Landing3D />
+    <Suspense fallback={<PhotoHero />}>
+      <PhotoStory />
     </Suspense>
   )
 }

@@ -162,7 +162,7 @@ function usePhotoBookend() {
   return ref
 }
 
-export function FinaleSection() {
+export function FinaleSection({ bookend = true }: { bookend?: boolean } = {}) {
   const { t } = useLang()
   const ref = useSectionFade('finale', 0.45, 2)
   const photo = usePhotoBookend()
@@ -170,10 +170,12 @@ export function FinaleSection() {
   return (
     <section data-story="finale" className="relative" style={{ height: '240vh' }}>
       <div className="sticky top-0 flex h-[100svh] items-start overflow-hidden px-4 pt-24 md:pt-28">
-        <div ref={photo} className="absolute inset-0" style={{ opacity: 0, visibility: 'hidden', containerType: 'size' }} aria-hidden>
-          <PhotoPlate animate={false} showPoints={false} />
-          <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/50 to-transparent" />
-        </div>
+        {bookend && (
+          <div ref={photo} className="absolute inset-0" style={{ opacity: 0, visibility: 'hidden', containerType: 'size' }} aria-hidden>
+            <PhotoPlate animate={false} showPoints={false} />
+            <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/50 to-transparent" />
+          </div>
+        )}
         <div ref={ref} className="relative mx-auto w-full max-w-3xl text-center" style={{ opacity: 0, visibility: 'hidden' }}>
           <p className="inline-block rounded-full bg-white/90 px-3 py-1 font-heading text-[11px] font-bold uppercase tracking-[0.3em] text-green-700 shadow">
             {t('l3d.finale.kicker')}
