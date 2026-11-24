@@ -70,6 +70,8 @@ Tyres, GPS and battery come from today's API. The rest are demo values and need,
   once the CAN plug-in and add-on sensors exist, and `add_ons` (packs fitted to the truck).
 - Shipper accounts and a `shipments` table (Phase 3). `/shipper` is a preview with a demo shipment.
 - Which login sees which data point is our reading of the docs (they don't assign them per role).
+- Plans → "Your subscription" reads `plan` and `add_ons` per truck; invoices / payment history need a billing table later.
+- Reports → CSV export and print-to-PDF run in the browser on `GET /api/alerts`; no backend change needed.
 
 ## Already works with the current backend
 - Profile reads `fleet_owners` (`name`, `phone`, `company`) straight from Supabase. RLS already

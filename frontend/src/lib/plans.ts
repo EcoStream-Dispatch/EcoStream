@@ -1,4 +1,5 @@
 import type { Plan, Truck } from '../types'
+import type { AddOn } from './parameters'
 
 /*
  * Subscription plans (Excel "Subscription Tiers" sheet).
@@ -71,3 +72,16 @@ export const hasPro = (p: Plan) => p === 'pro' || p === 'fleet'
 
 /** "₹2,689" */
 export const formatInr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`
+
+/**
+ * Monthly price of each add-on pack, ₹ per truck (Excel "Subscription Tiers", Base case).
+ * null = the sheet has no price yet ("price on request").
+ */
+export const ADD_ON_PRICE: Record<AddOn, number | null> = {
+  fuel: 200,
+  cold_chain: 350,
+  cargo_security: null,
+  wheel_end: null,
+  driver_safety: null,
+  ais140: null,
+}

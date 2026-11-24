@@ -1,15 +1,18 @@
 import { useState } from 'react'
-import { Check, MessageCircle, PackagePlus } from 'lucide-react'
+import { Check, MessageCircle, PackagePlus, ReceiptText } from 'lucide-react'
 import { getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import PlanBadge from '../components/PlanBadge'
-import { ADD_ONS, ANNUAL_DISCOUNT, PLANS, formatInr, planOf } from '../lib/plans'
-import type { Plan } from '../types'
+import { ADD_ONS, ADD_ON_PRICE, ANNUAL_DISCOUNT, PLANS, formatInr, planOf } from '../lib/plans'
+import { ADD_ON_NAME } from '../lib/parameters'
+import type { Plan, TruckSummary } from '../types'
 import { useLang } from '../lib/i18n'
 
 /**
  * Plans (Stitch brief screen 7; features and prices from the Excel "Subscription Tiers" sheet).
  * Prices are proposed. There is no payment flow: the button is "Talk to us".
+ * "Your subscription" shows each truck's plan and add-ons with the monthly cost
+ * (the docs: payments in the first prototype = subscription only). No invoices yet.
  */
 export default function PlansPage() {
   const [annual, setAnnual] = useState(false)
@@ -48,6 +51,8 @@ export default function PlansPage() {
           ))}
         </div>
       </div>
+
+      {trucksQ.data && trucksQ.data.length > 0 && <Subscription trucks={trucksQ.data} />}
 
       <ul className="mt-5 grid gap-4 md:grid-cols-3">
         {PLANS.map((p, i) => {
@@ -127,5 +132,72 @@ export default function PlansPage() {
         </ul>
       </section>
     </>
+  )
+}
+
+/** What the owner pays today: one row per truck, plan + add-ons, and the monthly total. */
+function Subscription({ trucks }: { trucks: TruckSummary[] }) {
+  const { t: tr } = useLang()
+  const rows = trucks.map((t) => {
+    const plan = PLANS.find((p) => p.id === planOf(t))!
+    const addOns = t.add_ons ?? []
+    const priced = addOns.reduce((n, a) => n + (ADD_ON_PRICE[a] ?? 0), 0)
+    const unpriced = addOns.some((a) => ADD_ON_PRICE[a] === null)
+    return { t, plan, addOns, monthly: plan.priceInr + priced, unpriced }
+  })
+  const total = rows.reduce((n, r) => n + r.monthly, 0)
+  const anyUnpriced = rows.some((r) => r.unpriced)
+
+  return (
+    <section className="mt-5 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-200" aria-labelledby="sub-heading">
+      <h2 id="sub-heading" className="flex items-center gap-2 text-lg font-bold">
+        <ReceiptText size={20} className="text-green-700" aria-hidden /> {tr('plans.yours')}
+      </h2>
+      <p className="text-sm text-navy-700">{tr('plans.yoursSub')}</p>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 text-xs uppercase tracking-wide text-navy-700">
+              <th className="py-2 pr-3 font-semibold">{tr('plans.truckCol')}</th>
+              <th className="py-2 pr-3 font-semibold">{tr('plans.planCol')}</th>
+              <th className="py-2 pr-3 font-semibold">{tr('plans.addonsCol')}</th>
+              <th className="py-2 text-right font-semibold">{tr('plans.perMonthCol')}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {rows.map(({ t, plan, addOns, monthly, unpriced }) => (
+              <tr key={t.id}>
+                <td className="whitespace-nowrap py-2.5 pr-3 font-heading font-bold">{t.reg_no}</td>
+                <td className="py-2.5 pr-3">
+                  <PlanBadge plan={plan.id} className="text-xs" />
+                </td>
+                <td className="py-2.5 pr-3 text-navy-700">
+                  {addOns.length
+                    ? addOns.map((a) => `${ADD_ON_NAME[a]}${ADD_ON_PRICE[a] === null ? '*' : ''}`).join(', ')
+                    : tr('plans.none')}
+                </td>
+                <td className="py-2.5 text-right font-semibold">
+                  {formatInr(monthly)}
+                  {unpriced && '*'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-gray-200">
+              <td colSpan={3} className="py-2.5 pr-3 font-bold">
+                {tr('plans.total')}
+              </td>
+              <td className="py-2.5 text-right font-heading text-lg font-extrabold">
+                {formatInr(total)}
+                {anyUnpriced && '*'}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {anyUnpriced && <p className="mt-1 text-xs text-navy-700">* {tr('plans.priceAsk')}</p>}
+      <p className="mt-3 rounded-lg bg-gray-50 p-3 text-xs text-navy-700">{tr('plans.invoicesLater')}</p>
+    </section>
   )
 }

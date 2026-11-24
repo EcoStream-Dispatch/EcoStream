@@ -1,19 +1,57 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, CalendarClock, CheckCircle2, FileWarning, Info, OctagonAlert } from 'lucide-react'
+import { AlertTriangle, CalendarClock, CheckCircle2, FileDown, FileWarning, Info, OctagonAlert, Sheet } from 'lucide-react'
 import { getAlerts, getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import { ErrorBox, Loading } from '../components/PageState'
 import { useAlertText } from '../lib/alertText'
 import { useLang } from '../lib/i18n'
 import { COMPLIANCE_NAME, dueState, dueText, formatDate, type DueState } from '../lib/compliance'
+import { formatDateTimeIST } from '../lib/format'
 import type { Alert, AlertType, ComplianceKind, TruckSummary } from '../types'
 
 /**
  * Reports: monthly alert summary and how long alerts stayed open, worked out from the
  * alerts we actually have, plus compliance reminders (permit, fitness, PUC, insurance).
  * No savings numbers: we don't measure savings yet.
+ *
+ * Downloads: "PDF" is the browser's print-to-PDF of this page (layout chrome hidden in print);
+ * "CSV" exports the month's alerts (Fleet plan: data export). Both work on demo data too.
  */
+
+/** One CSV cell: quoted when it holds a comma, quote or line break. */
+const cell = (v: string | number | null | undefined) => {
+  const s = v == null ? '' : String(v)
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+function downloadAlertsCsv(alerts: Alert[], trucks: TruckSummary[], month: string) {
+  const head = ['raised_ist', 'truck', 'tyre', 'type', 'severity', 'value', 'message', 'acknowledged_ist']
+  const rows = alerts.map((a) => {
+    const truck = trucks.find((t) => t.id === a.truck_id)
+    const tyre = truck?.tyres.find((t) => t.id === a.tyre_id)
+    return [
+      formatDateTimeIST(a.created_at),
+      truck?.reg_no ?? a.truck_id,
+      tyre?.position ?? '',
+      a.type,
+      a.severity,
+      a.value,
+      a.message,
+      a.acknowledged_at ? formatDateTimeIST(a.acknowledged_at) : '',
+    ]
+  })
+  // BOM so Excel opens the file as UTF-8
+  const csv = '\ufeff' + [head, ...rows].map((r) => r.map(cell).join(',')).join('\r\n')
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `ecostream-alerts-${month}.csv`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
 
 /** "2026-11" for an ISO time, in India time. */
 const monthOf = (iso: string) =>
@@ -53,12 +91,19 @@ export default function ReportsPage() {
 
   return (
     <>
+      {/* Only on paper / PDF */}
+      <div className="mb-4 hidden border-b border-gray-300 pb-2 print:block">
+        <p className="font-heading text-xl font-extrabold">
+          {tr('reports.printTitle')} · {monthName(month)}
+        </p>
+        <p className="text-sm text-navy-700">{tr('reports.generated', { d: formatDateTimeIST(new Date().toISOString()) })}</p>
+      </div>
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
         <div>
-          <h1 className="text-2xl font-extrabold md:text-3xl">{tr('nav.reports')}</h1>
-          <p className="mt-1 text-navy-700">{tr('reports.sub')}</p>
+          <h1 className="text-2xl font-extrabold md:text-3xl print:hidden">{tr('nav.reports')}</h1>
+          <p className="mt-1 text-navy-700 print:hidden">{tr('reports.sub')}</p>
         </div>
-        <label className="block">
+        <label className="block print:hidden">
           <span className="text-xs font-semibold text-navy-700">{tr('reports.month')}</span>
           <select
             value={month}
@@ -72,6 +117,25 @@ export default function ReportsPage() {
             ))}
           </select>
         </label>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2 print:hidden">
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-green-700 px-4 text-sm font-semibold text-white hover:bg-green-500"
+        >
+          <FileDown size={18} aria-hidden /> {tr('reports.pdf')}
+        </button>
+        <button
+          type="button"
+          onClick={() => downloadAlertsCsv(inMonth, trucks, month)}
+          disabled={inMonth.length === 0}
+          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-white px-4 text-sm font-semibold text-green-700 ring-1 ring-green-500/40 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Sheet size={18} aria-hidden /> {tr('reports.csv')}
+          <span className="rounded bg-gray-100 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-navy-700">{tr('reports.fleetTag')}</span>
+        </button>
       </div>
 
       <AlertSummary alerts={inMonth} trucks={trucks} />

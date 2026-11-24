@@ -55,7 +55,7 @@ function Shell() {
   return (
     <div className="flex min-h-screen bg-green-50">
       {/* ---------- Sidebar (tablet / desktop) - layout from the Stitch owner portal ---------- */}
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col bg-navy-900 py-6 text-white md:flex">
+      <aside className="sticky top-0 hidden h-screen print:!hidden w-60 shrink-0 flex-col bg-navy-900 py-6 text-white md:flex">
         <Link to="/fleet" className="flex items-center gap-2 px-5" aria-label="EcoStream fleet">
           <img src={asset('logo-mark.png')} alt="" className="h-10 w-10 rounded-md bg-white object-contain p-0.5" />
           <span className="flex flex-col">
@@ -96,7 +96,7 @@ function Shell() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* ---------- Top bar ---------- */}
-        <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/95 backdrop-blur">
+        <header className="sticky top-0 z-20 border-b print:hidden border-gray-200 bg-white/95 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2">
             <Link to="/fleet" className="flex items-center gap-2 md:hidden" aria-label="EcoStream fleet">
               <img src={asset('logo-mark.png')} alt="" className="h-9 w-9 object-contain" />
@@ -140,7 +140,7 @@ function Shell() {
 
       {/* ---------- Phone tab bar ---------- */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-20 flex border-t border-gray-200 bg-white md:hidden"
+        className="fixed inset-x-0 bottom-0 z-20 flex border-t print:hidden border-gray-200 bg-white md:hidden"
         aria-label="Main"
       >
         {PHONE_NAV.map(({ to, label, icon: Icon }) => (

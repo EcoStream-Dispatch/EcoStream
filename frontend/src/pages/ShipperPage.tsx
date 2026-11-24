@@ -11,6 +11,7 @@ import {
   Lock,
   LogOut,
   MapPin,
+  Package,
   Phone,
   Send,
   ShieldCheck,
@@ -35,6 +36,7 @@ import { PLAN_NAME, planOf } from '../lib/plans'
 import { ADD_ON_NAME, PARAMETERS, accessFor, derivedValues, type Access, type ParamValue } from '../lib/parameters'
 import { timeAgo } from '../lib/format'
 import { asset } from '../lib/asset'
+import { useLang, type Key } from '../lib/i18n'
 import type { Driver, TruckSummary } from '../types'
 
 /**
@@ -64,7 +66,16 @@ interface DemoShipment {
   totalKm: number
   progress: number
   eta: string
-  legs: { title: string; place: string; time: string }[]
+  legs: Leg[]
+}
+
+type LegKind = 'loaded' | 'checkpoint' | 'road' | 'delivery'
+interface Leg {
+  kind: LegKind
+  place: string
+  /** 'done' / 'cleared' with a time, 'live' (truck is on this leg), or 'expected' with a time */
+  state: 'done' | 'cleared' | 'live' | 'expected'
+  time?: string
 }
 
 /** Demo shipments, one per demo truck. Not in the database. */
@@ -77,10 +88,10 @@ const DEMO_SHIPMENT: Record<string, DemoShipment> = {
     progress: 0.6,
     eta: '6:00 PM',
     legs: [
-      { title: 'Loaded', place: 'Namakkal yard', time: '6:00 AM · done' },
-      { title: 'Checkpoint', place: 'Krishnagiri toll', time: '10:40 AM · cleared' },
-      { title: 'On the road', place: 'NH 48', time: 'Live position' },
-      { title: 'Delivery', place: 'Chennai', time: 'Expected 6:00 PM' },
+      { kind: 'loaded', place: 'Namakkal yard', state: 'done', time: '6:00 AM' },
+      { kind: 'checkpoint', place: 'Krishnagiri toll', state: 'cleared', time: '10:40 AM' },
+      { kind: 'road', place: 'NH 48', state: 'live' },
+      { kind: 'delivery', place: 'Chennai', state: 'expected', time: '6:00 PM' },
     ],
   },
   'truck-2': {
@@ -91,14 +102,14 @@ const DEMO_SHIPMENT: Record<string, DemoShipment> = {
     progress: 0.72,
     eta: '4:00 PM',
     legs: [
-      { title: 'Loaded', place: 'Chennai yard', time: '7:00 AM · done' },
-      { title: 'Checkpoint', place: 'Vellore toll', time: '9:30 AM · cleared' },
-      { title: 'On the road', place: 'NH 44', time: 'Live position' },
-      { title: 'Delivery', place: 'Salem', time: 'Expected 4:00 PM' },
+      { kind: 'loaded', place: 'Chennai yard', state: 'done', time: '7:00 AM' },
+      { kind: 'checkpoint', place: 'Vellore toll', state: 'cleared', time: '9:30 AM' },
+      { kind: 'road', place: 'NH 44', state: 'live' },
+      { kind: 'delivery', place: 'Salem', state: 'expected', time: '4:00 PM' },
     ],
   },
 }
-const FALLBACK: DemoShipment = { ref: 'DEMO-SHP', from: 'Pickup', to: 'Drop', totalKm: 0, progress: 0, eta: 'not known yet', legs: [] }
+const FALLBACK: DemoShipment = { ref: 'DEMO-SHP', from: '—', to: '—', totalKm: 0, progress: 0, eta: '—', legs: [] }
 
 type Mode = 'sender' | 'receiver'
 
@@ -109,22 +120,24 @@ interface Slot {
 }
 
 function useSlots(truck: TruckSummary) {
+  const { t } = useLang()
   return useMemo(() => {
     const plan = planOf(truck)
     const values: Record<string, ParamValue> = { ...(truck.params ?? {}), ...derivedValues(truck, null) }
     const lockText = (a: Access) =>
-      a.kind === 'plan' ? `Comes with the ${PLAN_NAME[a.needs]} plan` : a.kind === 'addon' ? `Needs the ${ADD_ON_NAME[a.addOn]} add-on` : null
+      a.kind === 'plan' ? t('sh.lockPlan', { plan: PLAN_NAME[a.needs] }) : a.kind === 'addon' ? t('sh.lockAddon', { name: ADD_ON_NAME[a.addOn] }) : null
     return (key: string): Slot => {
       const def = PARAMETERS.find((d) => d.key === key)
-      if (!def || !def.roles.includes('shipper')) return { value: null, locked: 'Not shared with shippers' }
+      if (!def || !def.roles.includes('shipper')) return { value: null, locked: t('sh.lockShared') }
       const access = accessFor(def, plan, truck.add_ons ?? [])
       return { value: access.kind === 'on' ? (values[key] ?? null) : null, locked: lockText(access) }
     }
-  }, [truck])
+  }, [truck, t])
 }
 
 function Shipment() {
   const { session, signOut } = useAuth()
+  const { t } = useLang()
   const trucksQ = useApi(getTrucks, [])
   const alertsQ = useApi(() => getAlerts(true), [])
   const driversQ = useApi(getDrivers, [])
@@ -152,16 +165,18 @@ function Shipment() {
               <LanguageSwitch />
             </div>
             <span className="whitespace-nowrap rounded-full bg-navy-900 px-2 py-0.5 text-xs font-semibold text-white">
-              Shipper<span className="hidden sm:inline"> preview</span>
+              {t('role.shipper')}
+              <span className="hidden sm:inline"> · {t('role.preview')}</span>
             </span>
             {USING_MOCK_DATA && (
               <span className="whitespace-nowrap rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-warning/40">
-                Demo<span className="hidden sm:inline"> data</span>
+                <span className="sm:hidden">{t('drv.demoShort')}</span>
+                <span className="hidden sm:inline">{t('drv.demoData')}</span>
               </span>
             )}
             {session && (
-              <button onClick={signOut} className="rounded-lg p-2 text-navy-700 hover:bg-gray-100" title="Log out">
-                <LogOut size={20} aria-label="Log out" />
+              <button onClick={signOut} className="rounded-lg p-2 text-navy-700 hover:bg-gray-100" title={t('drv.logout')}>
+                <LogOut size={20} aria-label={t('drv.logout')} />
               </button>
             )}
           </div>
@@ -171,7 +186,7 @@ function Shipment() {
       <main className="mx-auto w-full max-w-6xl space-y-4 px-4 pb-10 pt-4">
         {trucksQ.loading && !trucksQ.data && <Loading what="your shipment" />}
         {trucksQ.error && <ErrorBox message={trucksQ.error} onRetry={trucksQ.reload} />}
-        {trucksQ.data && !truck && <p className="text-navy-700">No shipment is linked to this login yet.</p>}
+        {trucksQ.data && !truck && <p className="text-navy-700">{t('sh.noShipment')}</p>}
 
         {truck && (
           <ShipmentView
@@ -182,7 +197,7 @@ function Shipment() {
             picker={
               USING_MOCK_DATA && (trucksQ.data?.length ?? 0) > 1 ? (
                 <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Demo: pick a shipment">
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-800">Demo: switch shipment</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-800">{t('sh.demoSwitch')}</span>
                   {trucksQ.data!.map((tk, i) => (
                     <button
                       key={tk.id}
@@ -222,6 +237,7 @@ function ShipmentView({
   picker: ReactNode
   alerts: Parameters<typeof ParameterBoard>[0]['alerts']
 }) {
+  const { t } = useLang()
   const s = DEMO_SHIPMENT[truck.id] ?? FALLBACK
   const slot = useSlots(truck)
   const kmLeft = Math.round(s.totalKm * (1 - s.progress))
@@ -237,29 +253,21 @@ function ShipmentView({
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-60" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
               </span>
-              LIVE TRACKING
+              {t('sh.live')}
             </span>
             <span className="font-mono text-xs text-navy-700">ID: {s.ref}</span>
           </div>
-          <h1 className="mt-1.5 text-2xl font-extrabold md:text-3xl">{truck.goods_type ?? 'Your shipment'}</h1>
+          <h1 className="mt-1.5 text-2xl font-extrabold md:text-3xl">{truck.goods_type ?? t('sh.yourShipment')}</h1>
           <p className="text-sm text-navy-700">
-            {mode === 'sender' ? (
-              <>
-                From your <b className="text-navy-900">{s.from}</b> pickup to <b className="text-navy-900">{s.to}</b>
-              </>
-            ) : (
-              <>
-                Coming to you in <b className="text-navy-900">{s.to}</b> from <b className="text-navy-900">{s.from}</b>
-              </>
-            )}
+            {mode === 'sender' ? t('sh.fromTo', { from: s.from, to: s.to }) : t('sh.comingTo', { from: s.from, to: s.to })}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-lg bg-gray-100 p-1" role="group" aria-label="View as">
+          <div className="inline-flex rounded-lg bg-gray-100 p-1" role="group" aria-label={t('sh.viewAs')}>
             {(
               [
-                ['sender', 'Sender', Send],
-                ['receiver', 'Receiver', Inbox],
+                ['sender', t('sh.sender'), Send],
+                ['receiver', t('sh.receiver'), Inbox],
               ] as const
             ).map(([id, label, Icon]) => (
               <button
@@ -278,10 +286,10 @@ function ShipmentView({
           <button
             type="button"
             disabled
-            title="Comes with shipper accounts (Phase 3)"
+            title={t('sh.phase3')}
             className="inline-flex min-h-[44px] cursor-not-allowed items-center gap-1.5 rounded-lg bg-white px-3 text-sm font-semibold text-navy-700/60 ring-1 ring-gray-200"
           >
-            <FileText size={16} aria-hidden /> e-Way bill / POD <span className="text-xs font-normal">(soon)</span>
+            <FileText size={16} aria-hidden /> {t('sh.ewaybill')} <span className="text-xs font-normal">{t('sh.soon')}</span>
           </button>
         </div>
       </section>
@@ -298,13 +306,13 @@ function ShipmentView({
                   <Truck size={20} aria-hidden />
                 </span>
                 <div className="min-w-0">
-                  <p className="font-heading text-[10px] font-bold uppercase tracking-wider text-navy-700">Now</p>
-                  <p className="truncate font-semibold">{slot('gps_position').value?.text ?? 'No position yet'}</p>
+                  <p className="font-heading text-[10px] font-bold uppercase tracking-wider text-navy-700">{t('sh.now')}</p>
+                  <p className="truncate font-semibold">{slot('gps_position').value?.text ?? t('sh.noPos')}</p>
                 </div>
               </div>
-              <Metric label="Speed" slot={slot('vehicle_speed')} />
+              <Metric label={t('sh.speed')} slot={slot('vehicle_speed')} />
               <div className="sm:ml-auto">
-                <p className="font-heading text-[10px] font-bold uppercase tracking-wider text-navy-700">{mode === 'sender' ? `Reaches ${s.to}` : 'Arrives'}</p>
+                <p className="font-heading text-[10px] font-bold uppercase tracking-wider text-navy-700">{mode === 'sender' ? t('sh.reaches', { to: s.to }) : t('sh.arrives')}</p>
                 <p className="flex items-center gap-1 font-heading text-lg font-extrabold">
                   <Clock size={16} className="text-green-700" aria-hidden /> {s.eta}
                 </p>
@@ -314,10 +322,10 @@ function ShipmentView({
               <FleetMap trucks={[truck]} />
             </div>
             <dl className="grid grid-cols-2 divide-gray-100 border-t border-gray-100 sm:grid-cols-4 sm:divide-x">
-              <Ribbon label="Distance left" value={s.totalKm ? `${kmLeft} km` : '—'} />
-              <Ribbon label="Trip done" value={`${Math.round(s.progress * 100)}%`} />
-              <Ribbon label="Last update" value={truck.last_seen_at ? timeAgo(truck.last_seen_at) : 'No data yet'} />
-              <Ribbon label="Truck" value={truck.reg_no} />
+              <Ribbon label={t('sh.distLeft')} value={s.totalKm ? `${kmLeft} km` : '—'} />
+              <Ribbon label={t('sh.tripDone')} value={`${Math.round(s.progress * 100)}%`} />
+              <Ribbon label={t('sh.lastUpdate')} value={truck.last_seen_at ? timeAgo(truck.last_seen_at) : t('sh.noData')} />
+              <Ribbon label={t('drv.truck')} value={truck.reg_no} />
             </dl>
           </section>
 
@@ -328,15 +336,11 @@ function ShipmentView({
         <div className="min-w-0 space-y-4 lg:col-span-4">
           <ColdChain slot={slot('cargo_temp_humidity')} />
           <Tamper door={slot('cargo_door')} seal={slot('cargo_seal')} />
-          <Pod icon={ShieldCheck} title="Vehicle condition" big={<StatusBadge status={truck.status} />}>
+          <Pod icon={ShieldCheck} title={t('sh.vehicle')} big={<StatusBadge status={truck.status} />}>
           <p className="text-sm text-navy-700">
-            {truck.status === 'ok'
-              ? 'Tyres are fine. No delay expected from the truck.'
-              : truck.status === 'warning'
-                ? 'A tyre needs a look. The owner has been alerted; the trip can continue for now.'
-                : 'A tyre problem may stop the truck. The owner is arranging a garage, so expect a delay.'}
+            {t(`sh.v.${truck.status}` as Key)}
           </p>
-          <PodFoot k="Tyres OK" v={`${truck.tyres.filter((t) => t.status === 'ok').length} of ${truck.tyres.length}`} />
+          <PodFoot k={t('sh.tyresOk')} v={t('sh.ofN', { n: truck.tyres.filter((ty) => ty.status === 'ok').length, m: truck.tyres.length })} />
         </Pod>
         </div>
       </div>
@@ -344,13 +348,13 @@ function ShipmentView({
       <DriverStrip truck={truck} driver={driver} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Pod icon={Vibrate} title="Shocks on the road" big={<PodValue slot={slot('acceleration_events')} />}>
-          <p className="text-sm text-navy-700">{slot('acceleration_events').value?.note ?? 'Hard braking, potholes and impacts, from the 3-axis sensor in the device.'}</p>
-          <PodFoot k="Alert" v="Hard impact → tyre check" />
+        <Pod icon={Vibrate} title={t('sh.shocks')} big={<PodValue slot={slot('acceleration_events')} />}>
+          <p className="text-sm text-navy-700">{slot('acceleration_events').value?.note ?? t('sh.shocksBody')}</p>
+          <PodFoot k={t('sh.alert')} v={t('sh.shockAlert')} />
         </Pod>
-        <Pod icon={Gauge} title="Speed" big={<PodValue slot={slot('vehicle_speed')} />}>
-          <p className="text-sm text-navy-700">From the truck's own speed signal. The owner is alerted when the truck over-speeds.</p>
-          <PodFoot k="Limit" v="90 km/h" />
+        <Pod icon={Gauge} title={t('sh.speed')} big={<PodValue slot={slot('vehicle_speed')} />}>
+          <p className="text-sm text-navy-700">{t('sh.speedBody')}</p>
+          <PodFoot k={t('sh.limit')} v="90 km/h" />
         </Pod>
       </div>
 
@@ -360,10 +364,11 @@ function ShipmentView({
 }
 
 function Metric({ label, slot }: { label: string; slot: Slot }) {
+  const { t } = useLang()
   return (
     <div>
       <p className="font-heading text-[10px] font-bold uppercase tracking-wider text-navy-700">{label}</p>
-      {slot.value ? <p className="font-heading text-lg font-extrabold text-green-700">{slot.value.text}</p> : <p className="text-xs text-navy-700">{slot.locked ?? 'No data yet'}</p>}
+      {slot.value ? <p className="font-heading text-lg font-extrabold text-green-700">{slot.value.text}</p> : <p className="text-xs text-navy-700">{slot.locked ?? t('sh.noData')}</p>}
     </div>
   )
 }
@@ -377,26 +382,31 @@ function Ribbon({ label, value }: { label: string; value: string }) {
   )
 }
 
-function Timeline({ legs }: { legs: DemoShipment['legs'] }) {
+const LEG_ICON: Record<LegKind, LucideIcon> = { loaded: Package, checkpoint: MapPin, road: Truck, delivery: Warehouse }
+
+function Timeline({ legs }: { legs: Leg[] }) {
+  const { t } = useLang()
   if (!legs.length) return null
-  const active = legs.findIndex((l) => l.time === 'Live position')
+  const active = legs.findIndex((l) => l.state === 'live')
+  const when = (l: Leg) =>
+    l.state === 'live' ? t('sh.st.live') : t(`sh.st.${l.state}` as Key, { t: l.time ?? '' })
   return (
     <section className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 md:p-5" aria-labelledby="legs-title">
       <div className="flex items-center justify-between gap-2">
         <h2 id="legs-title" className="text-base font-bold">
-          Trip milestones
+          {t('sh.milestones')}
         </h2>
         <span className="font-heading text-[11px] font-bold uppercase tracking-wider text-navy-700">
-          Leg {active + 1} of {legs.length}
+          {t('sh.leg', { n: active + 1, m: legs.length })}
         </span>
       </div>
       <ol className="mt-4 grid gap-4 md:grid-cols-4">
         {legs.map((l, i) => {
           const done = i < active
           const now = i === active
-          const Icon = done ? CheckCircle2 : now ? Truck : i === legs.length - 1 ? Warehouse : MapPin
+          const Icon = done ? CheckCircle2 : LEG_ICON[l.kind]
           return (
-            <li key={l.title} className={`relative flex gap-3 md:flex-col ${!done && !now ? 'opacity-60' : ''}`}>
+            <li key={l.kind} className={`relative flex gap-3 md:flex-col ${!done && !now ? 'opacity-60' : ''}`}>
               {i < legs.length - 1 && <span className={`absolute left-5 top-11 h-[calc(100%-1.5rem)] w-0.5 md:left-11 md:top-5 md:h-0.5 md:w-[calc(100%-2rem)] ${done ? 'bg-green-500' : 'bg-gray-200'}`} aria-hidden />}
               <span
                 className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
@@ -407,17 +417,17 @@ function Timeline({ legs }: { legs: DemoShipment['legs'] }) {
               </span>
               <div className="min-w-0">
                 <p className={`font-heading text-[11px] font-bold uppercase tracking-wider ${now ? 'text-green-700' : 'text-navy-700'}`}>
-                  {l.title}
-                  {now && ' (now)'}
+                  {t(`sh.leg.${l.kind}` as Key)}
+                  {now && ` ${t('sh.nowTag')}`}
                 </p>
                 <p className="font-semibold">{l.place}</p>
-                <p className="text-xs text-navy-700">{l.time}</p>
+                <p className="text-xs text-navy-700">{when(l)}</p>
               </div>
             </li>
           )
         })}
       </ol>
-      <p className="mt-3 text-xs text-navy-700">Milestones are a demo until shipper accounts arrive (Phase 3).</p>
+      <p className="mt-3 text-xs text-navy-700">{t('sh.legsDemo')}</p>
     </section>
   )
 }
@@ -434,31 +444,33 @@ function CardHead({ icon: Icon, title, tag }: { icon: LucideIcon; title: string;
 }
 
 function ColdChain({ slot }: { slot: Slot }) {
+  const { t } = useLang()
   return (
     <section className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 md:p-5">
-      <CardHead icon={Snowflake} title="Cargo temperature" tag="Add-on" />
-      <p className="mt-1 text-sm text-navy-700">Temperature and humidity inside the cargo box, for goods that must stay cool or dry.</p>
+      <CardHead icon={Snowflake} title={t('sh.cold')} tag={t('sh.addonTag')} />
+      <p className="mt-1 text-sm text-navy-700">{t('sh.coldBody')}</p>
       {slot.value ? (
         <div className="mt-3 rounded-lg bg-green-50 p-3">
           <p className="font-heading text-3xl font-extrabold">{slot.value.text}</p>
           {slot.value.note && <p className="text-sm text-navy-700">{slot.value.note}</p>}
         </div>
       ) : (
-        <LockedBox text={slot.locked ?? 'No data yet'} />
+        <LockedBox text={slot.locked ?? t('sh.noData')} />
       )}
     </section>
   )
 }
 
 function Tamper({ door, seal }: { door: Slot; seal: Slot }) {
+  const { t } = useLang()
   const rows: { icon: LucideIcon; name: string; s: Slot }[] = [
-    { icon: DoorClosed, name: 'Cargo door', s: door },
-    { icon: Lock, name: 'Cargo lock / seal', s: seal },
+    { icon: DoorClosed, name: t('sh.door'), s: door },
+    { icon: Lock, name: t('sh.seal'), s: seal },
   ]
   const anyOn = rows.some((r) => r.s.value)
   return (
     <section className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 md:p-5">
-      <CardHead icon={ShieldCheck} title="Cargo security" tag="Add-on" />
+      <CardHead icon={ShieldCheck} title={t('sh.security')} tag={t('sh.addonTag')} />
       {anyOn ? (
         <ul className="mt-3 space-y-2">
           {rows.map(({ icon: Icon, name, s }) => {
@@ -482,22 +494,24 @@ function Tamper({ door, seal }: { door: Slot; seal: Slot }) {
           })}
         </ul>
       ) : (
-        <LockedBox text={door.locked ?? 'No data yet'} />
+        <LockedBox text={door.locked ?? t('sh.noData')} />
       )}
-      <p className="mt-3 text-xs text-navy-700">You and the owner are alerted if the door opens or the seal breaks away from a loading point.</p>
+      <p className="mt-3 text-xs text-navy-700">{t('sh.securityNote')}</p>
     </section>
   )
 }
 
 function LockedBox({ text }: { text: string }) {
+  const { t } = useLang()
   return (
     <p className="mt-3 flex items-center gap-2 rounded-lg bg-gray-50 p-3 text-sm text-navy-700 ring-1 ring-gray-200">
-      <Lock size={16} className="shrink-0" aria-hidden /> Not on this truck. {text}.
+      <Lock size={16} className="shrink-0" aria-hidden /> {t('sh.notOnTruck', { why: text })}
     </p>
   )
 }
 
 function DriverStrip({ truck, driver }: { truck: TruckSummary; driver?: Driver }) {
+  const { t } = useLang()
   return (
     <section className="flex flex-col gap-4 rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-200 lg:flex-row lg:items-center md:p-5" aria-label="Driver and truck">
       <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -505,15 +519,15 @@ function DriverStrip({ truck, driver }: { truck: TruckSummary; driver?: Driver }
           <UserRound size={28} aria-hidden />
         </span>
         <div className="min-w-0">
-          <p className="font-heading text-[10px] font-bold uppercase tracking-wider text-navy-700">Driver</p>
-          <p className="text-lg font-bold">{driver?.name ?? 'Not assigned yet'}</p>
-          <p className="text-xs text-navy-700">The owner shares the driver's number once shipper accounts are live.</p>
+          <p className="font-heading text-[10px] font-bold uppercase tracking-wider text-navy-700">{t('drv.driver')}</p>
+          <p className="text-lg font-bold">{driver?.name ?? t('drv.notAssigned')}</p>
+          <p className="text-xs text-navy-700">{t('sh.driverNote')}</p>
         </div>
       </div>
       <div className="flex min-w-0 flex-1 items-center gap-3 rounded-lg bg-gray-50 p-3">
         <Truck size={22} className="shrink-0 text-green-700" aria-hidden />
         <div className="min-w-0">
-          <p className="font-heading text-[10px] font-bold uppercase tracking-wider text-navy-700">Truck</p>
+          <p className="font-heading text-[10px] font-bold uppercase tracking-wider text-navy-700">{t('drv.truck')}</p>
           <p className="font-bold">{truck.reg_no}</p>
           <p className="truncate text-xs text-navy-700">
             {truck.make} {truck.model} · EcoStream {PLAN_NAME[planOf(truck)]}
@@ -522,10 +536,10 @@ function DriverStrip({ truck, driver }: { truck: TruckSummary; driver?: Driver }
       </div>
       <div className="flex flex-wrap gap-2">
         <button type="button" disabled className="inline-flex min-h-[44px] cursor-not-allowed items-center gap-1.5 rounded-lg bg-gray-100 px-3 text-sm font-semibold text-navy-700/60">
-          <Phone size={16} aria-hidden /> Contact driver (soon)
+          <Phone size={16} aria-hidden /> {t('sh.contact')}
         </button>
         <button type="button" disabled className="inline-flex min-h-[44px] cursor-not-allowed items-center gap-1.5 rounded-lg bg-green-700/50 px-3 text-sm font-semibold text-white">
-          <ArrowDownToLine size={16} aria-hidden /> Proof of delivery (soon)
+          <ArrowDownToLine size={16} aria-hidden /> {t('sh.pod')}
         </button>
       </div>
     </section>
@@ -545,7 +559,8 @@ function Pod({ icon: Icon, title, big, children }: { icon: LucideIcon; title: st
 }
 
 function PodValue({ slot }: { slot: Slot }) {
-  if (!slot.value) return <span className="inline-flex items-center gap-1 text-xs font-semibold text-navy-700"><Lock size={12} aria-hidden /> {slot.locked ?? 'No data yet'}</span>
+  const { t } = useLang()
+  if (!slot.value) return <span className="inline-flex items-center gap-1 text-xs font-semibold text-navy-700"><Lock size={12} aria-hidden /> {slot.locked ?? t('sh.noData')}</span>
   return <span className="font-heading text-xl font-extrabold text-navy-900">{slot.value.text}</span>
 }
 

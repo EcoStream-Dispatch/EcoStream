@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'react'
-
 import { Link } from 'react-router-dom'
 import { BatteryCharging, ChevronDown, Cog, Disc, Disc3, Lock, MapPin, Package, ShieldCheck, UserRound, type LucideIcon } from 'lucide-react'
 import {
   ADD_ON_NAME,
-  GROUP_NAME,
   PARAMETERS,
   PARKED,
   accessFor,
@@ -18,6 +16,8 @@ import {
 } from '../lib/parameters'
 import { PLAN_NAME, planOf } from '../lib/plans'
 import { USING_MOCK_DATA } from '../services/api'
+import { useLang, type Key } from '../lib/i18n'
+import { paramLabel } from '../lib/paramLabels'
 import type { Alert, TruckSummary } from '../types'
 
 const GROUP_ICON: Record<ParamGroup, LucideIcon> = {
@@ -53,16 +53,6 @@ interface Row {
   value: ParamValue | null
 }
 
-const TITLE: Record<Role, string> = {
-  owner: 'Every data point',
-  driver: 'Truck vitals',
-  shipper: 'Shipment & vehicle',
-}
-const INTRO: Record<Role, string> = {
-  owner: "Everything EcoStream reads from this truck, grouped. What the truck's plan doesn't include is listed at the end.",
-  driver: 'What matters while you drive: tyres, engine warnings, brakes, fuel and safety.',
-  shipper: 'Where your goods are, how the truck is doing, and the cargo sensors.',
-}
 
 /**
  * All data points for one truck, filtered by who is looking (owner / driver / shipper)
@@ -72,6 +62,7 @@ const INTRO: Record<Role, string> = {
  */
 export default function ParameterBoard({ truck, role, alerts = [], className = '' }: { truck: TruckSummary; role: Role; alerts?: Alert[]; className?: string }) {
   const plan = planOf(truck)
+  const { t } = useLang()
   const [onlyIssues, setOnlyIssues] = useState(false)
 
   const rows = useMemo<Row[]>(() => {
@@ -95,15 +86,15 @@ export default function ParameterBoard({ truck, role, alerts = [], className = '
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <h2 id={`params-${role}`} className="flex flex-wrap items-center gap-2 text-lg font-bold">
-            {TITLE[role]}
+            {t(`pb.title.${role}` as Key)}
             {USING_MOCK_DATA && (
-              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-warning/40">Demo values</span>
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800 ring-1 ring-warning/40">{t('pb.demo')}</span>
             )}
           </h2>
-          <p className="text-sm text-navy-700">{INTRO[role]}</p>
+          <p className="text-sm text-navy-700">{t(`pb.intro.${role}` as Key)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
-          <span className="rounded-full bg-green-50 px-2.5 py-1 text-green-700 ring-1 ring-green-500/30">{live.length} on this truck</span>
+          <span className="rounded-full bg-green-50 px-2.5 py-1 text-green-700 ring-1 ring-green-500/30">{t('pb.onTruck', { n: live.length })}</span>
           <button
             type="button"
             onClick={() => setOnlyIssues((v) => !v)}
@@ -112,9 +103,10 @@ export default function ParameterBoard({ truck, role, alerts = [], className = '
               onlyIssues ? 'bg-warning text-navy-900 ring-warning' : 'bg-amber-50 text-amber-800 ring-warning/40 hover:bg-amber-100'
             }`}
           >
-            {issues.length} need a look{onlyIssues ? ' · show all' : ''}
+            {t('pb.needLook', { n: issues.length })}
+            {onlyIssues ? t('pb.showAll') : ''}
           </button>
-          {locked.length > 0 && <span className="rounded-full bg-gray-100 px-2.5 py-1 text-navy-700 ring-1 ring-gray-200">{locked.length} not on this truck</span>}
+          {locked.length > 0 && <span className="rounded-full bg-gray-100 px-2.5 py-1 text-navy-700 ring-1 ring-gray-200">{t('pb.notOn', { n: locked.length })}</span>}
         </div>
       </div>
 
@@ -124,7 +116,7 @@ export default function ParameterBoard({ truck, role, alerts = [], className = '
           if (!list.length) return null
           return <GroupCard key={g} group={g} list={list} forceOpen={onlyIssues} />
         })}
-        {onlyIssues && issues.length === 0 && <p className="rounded-xl bg-white p-4 text-sm text-navy-700 ring-1 ring-gray-200">Nothing needs a look right now.</p>}
+        {onlyIssues && issues.length === 0 && <p className="rounded-xl bg-white p-4 text-sm text-navy-700 ring-1 ring-gray-200">{t('pb.nothing')}</p>}
       </div>
 
       {(locked.length > 0 || role === 'owner') && !onlyIssues && <LockedList rows={locked} role={role} planName={PLAN_NAME[plan]} />}
@@ -133,6 +125,7 @@ export default function ParameterBoard({ truck, role, alerts = [], className = '
 }
 
 function GroupCard({ group, list, forceOpen }: { group: ParamGroup; list: Row[]; forceOpen: boolean }) {
+  const { t } = useLang()
   const issueCount = list.filter(isIssue).length
   const [open, setOpen] = useState(() => !isPhone() || issueCount > 0)
   const shown = open || forceOpen
@@ -152,12 +145,12 @@ function GroupCard({ group, list, forceOpen }: { group: ParamGroup; list: Row[];
             shown ? 'border-b border-gray-100' : 'md:border-b md:border-gray-100'
           }`}
         >
-          <Icon size={17} className="shrink-0 text-green-700" aria-hidden /> {GROUP_NAME[group]}
+          <Icon size={17} className="shrink-0 text-green-700" aria-hidden /> {t(`pb.g.${group}` as Key)}
           <span className="ml-auto flex items-center gap-2 text-xs font-semibold normal-case tracking-normal">
             {issueCount > 0 ? (
-              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 ring-1 ring-warning/40">{issueCount} need a look</span>
+              <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 ring-1 ring-warning/40">{t('pb.needLook', { n: issueCount })}</span>
             ) : (
-              <span className="text-green-700">All normal</span>
+              <span className="text-green-700">{t('pb.allNormal')}</span>
             )}
             <span className="text-navy-700/70">{list.length}</span>
             <ChevronDown size={18} className={`text-navy-700 transition md:hidden ${shown ? 'rotate-180' : ''}`} aria-hidden />
@@ -180,15 +173,16 @@ function GroupCard({ group, list, forceOpen }: { group: ParamGroup; list: Row[];
 
 function ValueRow({ row }: { row: Row }) {
   const { def, value } = row
+  const { t, lang } = useLang()
   const status = value?.status
   return (
     <li className="flex gap-3 px-4 py-2.5">
       <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${status ? DOT[status] : 'bg-gray-200'}`} aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="flex items-baseline justify-between gap-2 text-xs text-navy-700">
-          <span className="min-w-0">{def.label}</span>
+          <span className="min-w-0">{paramLabel(def, lang)}</span>
           <span className="shrink-0 rounded bg-gray-100 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-navy-700/80" title={`Source: ${def.source}`}>
-            {SOURCE_SHORT[def.source]}
+            {t(SOURCE_KEY[def.source])}
           </span>
         </p>
         {value ? (
@@ -201,7 +195,7 @@ function ValueRow({ row }: { row: Row }) {
           </>
         ) : (
           <p className="text-sm text-navy-700">
-            Not connected yet <span className="text-xs">· {def.powers}</span>
+            {t('pb.notConnected')} <span className="text-xs">· {def.powers}</span>
           </p>
         )}
       </div>
@@ -209,22 +203,23 @@ function ValueRow({ row }: { row: Row }) {
   )
 }
 
-const SOURCE_SHORT: Record<ParamDef['source'], string> = {
-  'Our sensor': 'Sensor',
-  'Truck CAN': 'CAN',
-  Derived: 'Computed',
-  'Add-on sensor': 'Add-on',
-  'Garage tool': 'Garage',
+const SOURCE_KEY: Record<ParamDef['source'], Key> = {
+  'Our sensor': 'pb.src.sensor',
+  'Truck CAN': 'pb.src.can',
+  Derived: 'pb.src.computed',
+  'Add-on sensor': 'pb.src.addon',
+  'Garage tool': 'pb.src.garage',
 }
 
 /** Data points this truck doesn't have, and what would turn them on. Owner also sees the parked list. */
 function LockedList({ rows, role, planName }: { rows: Row[]; role: Role; planName: string }) {
   const [open, setOpen] = useState(false)
+  const { t, lang } = useLang()
   const label = (a: Access) =>
     a.kind === 'plan'
-      ? `${PLAN_NAME[a.needs]} plan`
+      ? t('pb.planNeeded', { plan: PLAN_NAME[a.needs] })
       : a.kind === 'addon'
-        ? `Add-on: ${ADD_ON_NAME[a.addOn]}${a.needs ? ` (${PLAN_NAME[a.needs]})` : ''}`
+        ? t('pb.addonNeeded', { name: ADD_ON_NAME[a.addOn] }) + (a.needs ? ` (${PLAN_NAME[a.needs]})` : '')
         : ''
   return (
     <div className="mt-3 rounded-xl bg-gray-50 ring-1 ring-gray-200">
@@ -236,8 +231,8 @@ function LockedList({ rows, role, planName }: { rows: Row[]; role: Role; planNam
       >
         <Lock size={16} className="shrink-0 text-navy-700" aria-hidden />
         <span className="min-w-0">
-          {rows.length} data points not on this truck ({planName} plan)
-          {role === 'owner' && <span className="block text-xs font-normal text-navy-700 sm:inline sm:text-sm"><span className="hidden sm:inline"> · </span>and {PARKED.length} planned for later</span>}
+          {t('pb.lockedHead', { n: rows.length, plan: planName })}
+          {role === 'owner' && <span className="block text-xs font-normal text-navy-700 sm:inline sm:text-sm"><span className="hidden sm:inline"> · </span>{t('pb.parkedShort', { n: PARKED.length })}</span>}
         </span>
         <ChevronDown size={18} className={`ml-auto shrink-0 transition ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
@@ -246,25 +241,25 @@ function LockedList({ rows, role, planName }: { rows: Row[]; role: Role; planNam
           <ul className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
             {rows.map((r) => (
               <li key={r.def.key} className="flex items-baseline justify-between gap-2 text-sm">
-                <span className="min-w-0 text-navy-900">{r.def.label}</span>
+                <span className="min-w-0 text-navy-900">{paramLabel(r.def, lang)}</span>
                 <span className="shrink-0 text-xs font-semibold text-navy-700">{label(r.access)}</span>
               </li>
             ))}
           </ul>
           {role === 'owner' && (
             <>
-              <p className="mt-4 text-xs font-bold uppercase tracking-wide text-navy-700">Planned for later (not in any plan yet)</p>
+              <p className="mt-4 text-xs font-bold uppercase tracking-wide text-navy-700">{t('pb.parkedTitle')}</p>
               <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm text-navy-700">
                 {PARKED.map((x) => (
                   <li key={x}>{x}</li>
                 ))}
               </ul>
               <Link to="/plans" className="mt-3 inline-flex min-h-[44px] items-center rounded-lg bg-green-700 px-4 text-sm font-semibold text-white hover:bg-green-500">
-                See plans and add-ons
+                {t('pb.seePlans')}
               </Link>
             </>
           )}
-          {role !== 'owner' && <p className="mt-3 text-xs text-navy-700">The truck owner can turn these on with a plan upgrade or add-on.</p>}
+          {role !== 'owner' && <p className="mt-3 text-xs text-navy-700">{t('pb.ownerCan')}</p>}
         </div>
       )}
     </div>
