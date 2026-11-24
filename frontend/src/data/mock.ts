@@ -15,6 +15,7 @@
  *                        its corrected pressure stays flat (spec acceptance criterion 3)
  *                        Plus one old, acknowledged critical alert so "Closed" isn't empty.
  */
+import type { ParamValue } from '../lib/parameters'
 import type { Alert, Booking, Driver, FleetOwner, Garage, NearbyGarage, Reading, Truck, TruckStatus, Tyre, TyreWithStatus, TruckSummary } from '../types'
 import { haversineKm, isOpenNow } from '../lib/geo'
 import { gaugeKpaFromCorrected, psiToKpa } from '../lib/units'
@@ -295,6 +296,68 @@ function latestReading(tyreId: string): Reading | undefined {
 
 const openAlerts = () => alerts.filter((a) => !a.acknowledged_at)
 
+// ---------- Every other data point (lib/parameters.ts) ----------
+// Demo values only. Typical values and alert limits come from our sensor study
+// (sample values and thresholds in the ECR sensor matrix). Keys not listed here show
+// "Not connected yet" on screen.
+
+const LITE_VALUES: Record<string, ParamValue> = {
+  cellular_signal: { text: '−82 dBm · 4G', note: 'Readings stored and sent later in dead zones', status: 'ok' },
+  ambient_temperature: { text: '33 °C', status: 'info' },
+  acceleration_events: { text: '1 hard pothole hit today', note: 'Near Vellore, 10:42 · tyres checked by sensor, no change', status: 'info' },
+  ignition: { text: 'On · driving', note: 'Trip started 2 h 10 min ago', status: 'ok' },
+  battery_cranking_health: { text: 'Good', note: 'Lowest dip at last start 19.8 V (alert below 18 V)', status: 'ok' },
+  device_tamper: { text: 'No tampering', note: 'Power, case and GPS all normal', status: 'ok' },
+  tyre_tread_depth: { text: '9 mm lowest · RL-O', note: 'Logged at Sample Tyre Works 3, 2 weeks ago', status: 'ok' },
+  cargo_door: { text: 'Closed', note: 'Alert if opened outside a loading point', status: 'ok' },
+  cargo_seal: { text: 'Locked', note: 'Seal intact since loading', status: 'ok' },
+}
+
+const PRO_VALUES: Record<string, ParamValue> = {
+  road_gradient: { text: '412 m · 1.8% uphill', note: 'Ghat section ahead in 38 km: tyres and brakes OK for it', status: 'ok' },
+  road_roughness: { text: 'Moderate', note: '3 potholes logged on this stretch by the fleet', status: 'info' },
+  fault_codes: { text: '1 active: DPF pressure high', note: 'SPN 3251 · FMI 0. Plain words: the exhaust filter is filling up. Plan a regeneration drive.', status: 'warning' },
+  coolant_temperature: { text: '88 °C', note: 'Normal · alert above 100 °C', status: 'ok' },
+  coolant_level: { text: 'OK', status: 'ok' },
+  oil_pressure: { text: '420 kPa', note: 'Normal · alert below 200 kPa', status: 'ok' },
+  oil_temperature: { text: '96 °C', note: 'Normal · alert above 120 °C', status: 'ok' },
+  engine_rpm: { text: '1,450 rpm', note: 'Alert above 2,800 rpm', status: 'ok' },
+  engine_load: { text: '62% · accelerator 48%', status: 'info' },
+  intake_temp_boost: { text: '41 °C · 180 kPa boost', note: 'Alert above 250 kPa', status: 'ok' },
+  exhaust_gas_temperature: { text: '420 °C', note: 'Alert above 600 °C', status: 'ok' },
+  fuel_rate: { text: '14.2 L / hour', note: 'Alert above 20 L / hour', status: 'ok' },
+  fuel_level_can: { text: '67%', note: 'From the truck gauge (coarse)', status: 'ok' },
+  def_level: { text: '45%', note: 'Alert below 15%', status: 'ok' },
+  dpf_soot_load: { text: '19 kPa back-pressure', note: 'Regeneration due soon (at 20 kPa)', status: 'warning' },
+  engine_hours_odometer: { text: '142,350 km · 6,210 h', note: 'Next service in 2,650 km', status: 'info' },
+  vehicle_speed: { text: '55 km/h', note: 'Alert above 90 km/h', status: 'ok' },
+  idle_time: { text: '38 min today', note: 'Alert when idling over 15 min at a stretch', status: 'info' },
+  transmission_oil_temperature: { text: '84 °C', note: 'Normal', status: 'ok' },
+  clutch_slip: { text: '2%', note: 'Normal · check above 8%', status: 'ok' },
+  water_in_fuel: { text: 'None', status: 'ok' },
+  air_filter_restriction: { text: '3.1 kPa', note: 'Change filter at 6 kPa', status: 'ok' },
+  oil_life_estimate: { text: '54% left', note: 'About 7,000 km to the next oil change', status: 'ok' },
+  fuel_level_probe: { text: '268 L of 400 L', note: 'No sudden drops: no theft', status: 'ok' },
+  air_tank_pressure: { text: 'Front 8.2 bar · rear 7.9 bar', note: 'Alert below 6.5 bar', status: 'ok' },
+  brake_air_leak_rate: { text: '0.05 bar / min (parked)', note: 'Normal · alert above 0.2 bar / min', status: 'ok' },
+  vibration_signature: { text: 'Normal', note: 'No bearing or prop-shaft pattern', status: 'ok' },
+  hub_temperature: { text: 'Hottest 71 °C · FR hub', note: 'Alert above 110 °C', status: 'ok' },
+  driver_score: { text: '82 / 100', note: '2 harsh brakes, no over-speeding this week', status: 'ok' },
+  driver_id: { text: 'DRV-00421 · Murugan S (demo)', note: 'Tag scanned at trip start', status: 'ok' },
+  driver_camera: { text: 'Alert, no fatigue', note: 'Eyes-closed time 4% (alert above 15%)', status: 'ok' },
+  ambient_temperature: { text: '35 °C', status: 'info' },
+}
+
+const MOCK_EXTRA: Record<string, Partial<TruckSummary>> = {
+  'truck-1': { battery_v: 26.4, battery_ts: iso(2 * MIN), add_ons: ['cargo_security'], params: LITE_VALUES },
+  'truck-2': {
+    battery_v: 27.1,
+    battery_ts: iso(1 * MIN),
+    add_ons: ['fuel', 'wheel_end', 'driver_safety', 'cargo_security'],
+    params: { ...LITE_VALUES, ...PRO_VALUES, tyre_tread_depth: { text: '11 mm lowest · R2L-O', note: 'Logged at Sample Tyre Works 8, last week', status: 'ok' } },
+  },
+}
+
 /** GET /api/trucks */
 export function mockGetTrucks(): TruckSummary[] {
   const open = openAlerts()
@@ -341,6 +404,7 @@ export function mockGetTrucks(): TruckSummary[] {
       lon: newest?.lon ?? null,
       open_alerts: truckAlerts.length,
       tyres: tyreList,
+      ...MOCK_EXTRA[truck.id],
     }
   })
 }

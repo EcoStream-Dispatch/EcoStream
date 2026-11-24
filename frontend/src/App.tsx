@@ -20,6 +20,7 @@ import { hasWebGL } from './landing3d/store'
 // Loading it only when needed keeps the first page load fast on phones.
 const TruckPage = lazy(() => import('./pages/TruckPage'))
 const DriverPage = lazy(() => import('./pages/DriverPage'))
+const ShipperPage = lazy(() => import('./pages/ShipperPage'))
 // The 3D landing page (three.js) is only loaded on "/", so the app itself stays light.
 const Landing3D = lazy(() => import('./landing3d/Landing3D'))
 // The photo-real landing page (no three.js): the default.
@@ -63,6 +64,16 @@ export default function App() {
           <RequireAuth>
             <Suspense fallback={<Loading what="cockpit" />}>
               <DriverPage />
+            </Suspense>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/shipper"
+        element={
+          <RequireAuth>
+            <Suspense fallback={<Loading what="shipment" />}>
+              <ShipperPage />
             </Suspense>
           </RequireAuth>
         }

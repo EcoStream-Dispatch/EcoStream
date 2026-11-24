@@ -62,6 +62,15 @@ status text ('requested' | 'confirmed' | 'done' | 'cancelled'), created_at`
 | Engine (CAN/J1939) data | Truck page Pro cards | Pro trucks show "Not connected yet". |
 | Single-item endpoints `GET /api/alerts/{id}`, `GET /api/trucks/{id}` | Alert detail, Truck page | Not required: the frontend filters the list endpoints for now. |
 
+## Data points per login (owner / driver / shipper)
+The dashboards now list every data point from the "Plans & Parameters" sheet
+(`frontend/src/lib/parameters.ts`), filtered by login and by the truck's plan and add-ons.
+Tyres, GPS and battery come from today's API. The rest are demo values and need, later:
+- `GET /api/trucks` to send `params` (latest value per data-point key, e.g. `coolant_temperature`)
+  once the CAN plug-in and add-on sensors exist, and `add_ons` (packs fitted to the truck).
+- Shipper accounts and a `shipments` table (Phase 3). `/shipper` is a preview with a demo shipment.
+- Which login sees which data point is our reading of the docs (they don't assign them per role).
+
 ## Already works with the current backend
 - Profile reads `fleet_owners` (`name`, `phone`, `company`) straight from Supabase. RLS already
   lets an owner read only their own row.

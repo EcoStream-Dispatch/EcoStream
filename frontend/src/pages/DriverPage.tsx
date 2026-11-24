@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { BadgeCheck, Disc3, Gauge, Lock, LogOut, Mountain, Navigation, Phone, Siren, Star, Thermometer, UserRound, Volume2, Wrench, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Disc3, Gauge, LogOut, Mountain, Navigation, Phone, Siren, Star, Thermometer, UserRound, Volume2, Wrench, X, type LucideIcon } from 'lucide-react'
 import { getAlerts, getDrivers, getNearestGarages, getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import { LiveProvider, useLiveEvents, useThrottled } from '../services/live'
 import { useAuth } from '../auth/AuthProvider'
 import TyreLayout from '../components/TyreLayout'
+import ParameterBoard from '../components/ParameterBoard'
+import { PLAN_NAME, planOf } from '../lib/plans'
 import FleetMap from '../components/FleetMap'
 import StatusBadge from '../components/StatusBadge'
 import Pressure from '../components/Pressure'
@@ -55,7 +57,9 @@ function Cockpit() {
 
   const driversQ = useApi(getDrivers, [])
 
-  const truck = trucksQ.data?.[0]
+  // No driver accounts yet: the driver sees the first truck. In demo mode they can switch trucks.
+  const [truckIdx, setTruckIdx] = useState(0)
+  const truck = trucksQ.data?.[truckIdx] ?? trucksQ.data?.[0]
   const alert = (alertsQ.data ?? [])
     .filter((a) => a.truck_id === truck?.id)
     .sort(
@@ -123,6 +127,23 @@ function Cockpit() {
                   <p className="truncate text-sm text-navy-700">
                     {truck.make} {truck.model} · {truck.tyres.length} tyres
                   </p>
+                  {USING_MOCK_DATA && (trucksQ.data?.length ?? 0) > 1 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1.5" role="group" aria-label="Demo: pick a truck">
+                      {trucksQ.data!.map((tk, i) => (
+                        <button
+                          key={tk.id}
+                          type="button"
+                          onClick={() => setTruckIdx(i)}
+                          aria-pressed={tk.id === truck.id}
+                          className={`min-h-[32px] rounded-full px-2.5 text-xs font-semibold ring-1 ${
+                            tk.id === truck.id ? 'bg-navy-900 text-white ring-navy-900' : 'bg-white text-navy-700 ring-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {tk.reg_no} · {PLAN_NAME[planOf(tk)]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -150,6 +171,9 @@ function Cockpit() {
 
             {/* Sensor cards */}
             <SensorCards truck={truck} />
+
+            {/* Every data point a driver needs, for this truck's plan */}
+            <ParameterBoard truck={truck} role="driver" alerts={alertsQ.data ?? []} />
 
             {/* Map + garages */}
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
@@ -519,7 +543,7 @@ function SensorCards({ truck }: { truck: TruckSummary }) {
   const allOk = okCount === truck.tyres.length
 
   return (
-    <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
       <Card label="TPMS" title="Tyre pressure" icon={Disc3}>
         {avgKpa !== null ? (
           <>
@@ -546,19 +570,9 @@ function SensorCards({ truck }: { truck: TruckSummary }) {
           <p className="text-sm text-navy-700">No readings yet.</p>
         )}
       </Card>
-      <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-green-500/10 md:col-span-2 xl:col-span-1 xl:row-span-1">
+      <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-green-500/10 md:col-span-2 xl:col-span-1">
         <p className="font-heading text-[11px] font-bold uppercase tracking-wider text-navy-700">Tap a tyre</p>
         <TyreBoard truck={truck} />
-      </div>
-      <div className="rounded-xl bg-white p-5 opacity-70 shadow-sm ring-1 ring-gray-200">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="font-heading text-[11px] font-bold uppercase tracking-wider text-navy-700">CAN / J1939</p>
-            <h3 className="text-lg font-bold">Engine</h3>
-          </div>
-          <Lock size={18} className="text-navy-700" aria-hidden />
-        </div>
-        <p className="mt-2 text-sm text-navy-700">Coolant, oil temperature and fault codes come in a later update.</p>
       </div>
     </div>
   )

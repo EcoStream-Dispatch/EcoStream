@@ -14,7 +14,7 @@ import { asset } from '../lib/asset'
  *
  * Email + password is what Supabase is set up for (spec section 6.1).
  * Phone + OTP works once an SMS provider is switched on in Supabase.
- * Shipper is Phase 3, so its tab is shown but disabled.
+ * Shipper accounts are Phase 3: the Shipper tab opens a preview of the shipper view.
  */
 type Role = 'owner' | 'driver' | 'shipper'
 type Mode = 'email' | 'phone'
@@ -22,10 +22,10 @@ type Mode = 'email' | 'phone'
 const ROLES: { id: Role; icon: LucideIcon; key: 'role.owner' | 'role.driver' | 'role.shipper'; enabled: boolean }[] = [
   { id: 'owner', icon: Truck, key: 'role.owner', enabled: true },
   { id: 'driver', icon: UserRound, key: 'role.driver', enabled: true },
-  { id: 'shipper', icon: Package, key: 'role.shipper', enabled: false },
+  { id: 'shipper', icon: Package, key: 'role.shipper', enabled: true },
 ]
 
-const HOME: Record<Role, string> = { owner: '/fleet', driver: '/driver', shipper: '/' }
+const HOME: Record<Role, string> = { owner: '/fleet', driver: '/driver', shipper: '/shipper' }
 
 export default function LoginPage() {
   const { session, demoMode, signIn, sendOtp, verifyOtp } = useAuth()
@@ -116,6 +116,7 @@ export default function LoginPage() {
                   <Icon size={20} aria-hidden />
                   <span>{t(key)}</span>
                   {!enabled && <span className="text-[10px] font-medium">{t('role.soon')}</span>}
+                  {id === 'shipper' && <span className="text-[10px] font-medium text-navy-700/70">{t('role.preview')}</span>}
                 </button>
               )
             })}
@@ -128,7 +129,7 @@ export default function LoginPage() {
                 to={HOME[role]}
                 className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-green-700 font-semibold text-white transition hover:bg-green-500"
               >
-                {role === 'driver' ? t('login.driverDemo') : t('login.openDemo')} <ArrowRight size={18} aria-hidden />
+                {role === 'driver' ? t('login.driverDemo') : role === 'shipper' ? t('login.shipperDemo') : t('login.openDemo')} <ArrowRight size={18} aria-hidden />
               </Link>
             </div>
           ) : (

@@ -8,6 +8,8 @@
  * Units: pressures in kPa (gauge), temperatures in °C, times as ISO strings in UTC.
  */
 
+import type { AddOn, ParamValue } from './lib/parameters'
+
 // ---------- Simple enums ----------
 
 /** Wheel layout of a truck. 6W = 2 front + 4 rear (one dual axle). 10W = 2 front + 8 rear (two dual axles). */
@@ -148,6 +150,14 @@ export interface TruckSummary extends Truck {
    */
   battery_v?: number | null
   battery_ts?: string | null
+  /**
+   * NEW, optional: latest value of every other data point the truck's plan includes
+   * (keys from lib/parameters.ts, e.g. "coolant_temperature"). Mock only for now:
+   * the engine (CAN) plug-in and add-on sensors aren't built, so the API doesn't send these.
+   */
+  params?: Record<string, ParamValue>
+  /** NEW, optional: add-on packs fitted to this truck (lib/parameters.ts). Mock only for now. */
+  add_ons?: AddOn[]
 }
 
 /** One item of GET /api/garages/nearest */
