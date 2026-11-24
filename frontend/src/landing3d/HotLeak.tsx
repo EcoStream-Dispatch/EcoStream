@@ -139,11 +139,15 @@ export default function HotLeakScene() {
       {/* podium */}
       <mesh position={[0, 0.08, 0]} receiveShadow castShadow>
         <cylinderGeometry args={[3.4, 3.6, 0.16, 64]} />
-        <meshStandardMaterial color="#F4F9F1" roughness={0.6} />
+        <meshStandardMaterial color="#0A1A2E" roughness={0.4} />
       </mesh>
       <mesh position={[0, 0.17, 0]}>
         <cylinderGeometry args={[3.42, 3.42, 0.02, 64]} />
-        <meshStandardMaterial color="#5C9A35" roughness={0.5} />
+        <meshStandardMaterial color="#13304F" roughness={0.3} metalness={0.3} />
+      </mesh>
+      <mesh position={[0, 0.18, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[3.42, 0.035, 8, 96]} />
+        <meshBasicMaterial color={new THREE.Color('#a9e070').multiplyScalar(1.5)} toneMapped={false} />
       </mesh>
       <group position={[0, 0.18, -GAP]}>
         <ShowTyre kind="hot" />

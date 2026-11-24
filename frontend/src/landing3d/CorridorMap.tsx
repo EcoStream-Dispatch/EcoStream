@@ -97,10 +97,10 @@ function useTerrain() {
     g.rotateX(-Math.PI / 2)
     const pos = g.attributes.position as THREE.BufferAttribute
     const colors: number[] = []
-    const low = new THREE.Color('#9fb45a')
-    const mid = new THREE.Color('#c8a76a')
-    const high = new THREE.Color('#8a6a4a')
-    const sea = new THREE.Color('#7fb6c9')
+    const low = new THREE.Color('#dfe9dc')
+    const mid = new THREE.Color('#b6c7cb')
+    const high = new THREE.Color('#7c94a8')
+    const sea = new THREE.Color('#8fb3cf')
     const [cx] = mapXZ(13.08, 80.27)
     const c = new THREE.Color()
     for (let i = 0; i < pos.count; i++) {
@@ -182,7 +182,7 @@ export default function CorridorMap() {
     return new THREE.CatmullRomCurve3(pts, false, 'centripetal', 0.3)
   }, [])
   const roadGeo = useMemo(() => new THREE.TubeGeometry(route, 300, 0.16, 8, false), [route])
-  const roadMat = useMemo(() => lineMaterial('#f5c518'), [])
+  const roadMat = useMemo(() => lineMaterial('#13304F'), [])
 
   // Truck pins: positions along the route (0..1); the amber one is the leaking truck
   const trucks = useRef<THREE.Group[]>([])
@@ -256,11 +256,11 @@ export default function CorridorMap() {
       {/* diorama base */}
       <mesh position={[0, -0.9, 0]}>
         <boxGeometry args={[W + 0.6, 1.6, D + 0.6]} />
-        <meshStandardMaterial color="#F4F1E8" roughness={0.8} fog={false} />
+        <meshStandardMaterial color="#13304F" roughness={0.35} metalness={0.3} fog={false} />
       </mesh>
       <mesh position={[0, -0.12, 0]}>
         <boxGeometry args={[W + 0.7, 0.12, D + 0.7]} />
-        <meshStandardMaterial color="#5C9A35" roughness={0.6} fog={false} />
+        <meshStandardMaterial color="#8CC152" emissive="#5C9A35" emissiveIntensity={0.8} roughness={0.6} fog={false} />
       </mesh>
       <mesh geometry={terrain} >
         <meshStandardMaterial vertexColors roughness={0.95} flatShading fog={false} />

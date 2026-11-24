@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useRef } from 'react'
+import { Suspense, useLayoutEffect, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { AdaptiveDpr, Preload } from '@react-three/drei'
 import { Bloom, EffectComposer, SMAA, Vignette } from '@react-three/postprocessing'
@@ -88,6 +88,45 @@ function CameraRig() {
   return null
 }
 
+/**
+ * Digital-twin outline: thin glowing green edges on the truck's body panels, so the 3D truck
+ * reads as "what EcoStream sees" next to the real photo. Tyres keep their own look (they glow
+ * on their own in the X-ray scenes).
+ */
+function useTwinEdges(root: React.RefObject<THREE.Group>, skip: Set<THREE.Material>) {
+  useLayoutEffect(() => {
+    const group = root.current
+    if (!group) return
+    const mat = new THREE.LineBasicMaterial({
+      color: new THREE.Color('#a9e070').multiplyScalar(1.5),
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false,
+      toneMapped: false,
+    })
+    const added: THREE.LineSegments[] = []
+    const geos: THREE.BufferGeometry[] = []
+    group.traverse((o) => {
+      const mesh = o as THREE.Mesh
+      if (!mesh.isMesh || !mesh.geometry || (mesh as unknown as THREE.InstancedMesh).isInstancedMesh) return
+      const m = mesh.material as THREE.Material
+      if (skip.has(m) || (m as THREE.MeshStandardMaterial).map) return
+      const edges = new THREE.EdgesGeometry(mesh.geometry, 28)
+      if (edges.attributes.position.count === 0) return
+      const line = new THREE.LineSegments(edges, mat)
+      line.raycast = () => {}
+      mesh.add(line)
+      added.push(line)
+      geos.push(edges)
+    })
+    return () => {
+      added.forEach((l) => l.parent?.remove(l))
+      geos.forEach((g) => g.dispose())
+      mat.dispose()
+    }
+  }, [root, skip])
+}
+
 /** The truck drives in from the distance when the page opens, then keeps rolling in place. */
 function DrivingTruck({
   startAt,
@@ -99,6 +138,9 @@ function DrivingTruck({
   tyres: Record<string, THREE.Material>
 }) {
   const ref = useRef<THREE.Group>(null)
+  const body = useRef<THREE.Group>(null)
+  const skip = useMemo(() => new Set<THREE.Material>([materials.rubber, ...Object.values(tyres)]), [materials, tyres])
+  useTwinEdges(body, skip)
   useFrame((state) => {
     if (!ref.current) return
     const t = startAt === null ? 0 : Math.min(1, (state.clock.elapsedTime - startAt) / 3.2)
@@ -107,7 +149,9 @@ function DrivingTruck({
   })
   return (
     <group ref={ref} position={[0, 0, -34]}>
-      <Truck speed={DRIVE_SPEED / 0.56} materials={materials} tyreMaterials={tyres} />
+      <group ref={body}>
+        <Truck speed={DRIVE_SPEED / 0.56} materials={materials} tyreMaterials={tyres} />
+      </group>
       <Sensors />
       <CabUnit />
     </group>
@@ -169,7 +213,7 @@ export default function Experience({ startAt, onReady, paused }: Props) {
       camera={{ fov: 40, near: 0.1, far: 5000, position: HERO_START.pos }}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping
-        gl.toneMappingExposure = 0.62
+        gl.toneMappingExposure = 0.78
       }}
     >
       <Suspense fallback={null}>
@@ -180,8 +224,8 @@ export default function Experience({ startAt, onReady, paused }: Props) {
         {!low && (
           <EffectComposer multisampling={0}>
             <SMAA />
-            <Bloom intensity={0.35} luminanceThreshold={0.82} luminanceSmoothing={0.2} mipmapBlur />
-            <Vignette offset={0.3} darkness={0.42} />
+            <Bloom intensity={0.45} luminanceThreshold={0.9} luminanceSmoothing={0.15} mipmapBlur />
+            <Vignette offset={0.35} darkness={0.28} />
           </EffectComposer>
         )}
       </Suspense>

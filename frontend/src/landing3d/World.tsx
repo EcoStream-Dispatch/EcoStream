@@ -1,13 +1,12 @@
 import { useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Sky } from '@react-three/drei'
 import * as THREE from 'three'
-import type { Sky as SkyImpl } from 'three-stdlib'
 import { dayFactor, driveFactor, story } from './store'
 
 /*
- * Golden-hour South Indian highway, drawn in code: sky, warm sun, road with moving lane
- * marks, red-earth shoulders, fields, palms and round trees, electricity poles, far hills.
+ * The highway as EcoStream's "digital twin" sees it: a clean, light studio world (clay-white
+ * trees, hills and poles on a faint grid), a slate road with green lane marks, and soft
+ * daylight. It is the 3D counterpart of the real photo in PhotoHero, which fades into it.
  * Everything except the sky moves towards +z, so the parked truck looks like it's driving.
  */
 
@@ -36,19 +35,19 @@ function useRoadTexture() {
     c.width = 256
     c.height = 512
     const g = c.getContext('2d')!
-    g.fillStyle = '#4a4a4f'
+    g.fillStyle = '#34414d'
     g.fillRect(0, 0, 256, 512)
     // speckle
     const r = seeded(7)
     for (let i = 0; i < 2500; i++) {
-      const v = 60 + Math.floor(r() * 40)
-      g.fillStyle = `rgb(${v},${v},${v + 4})`
+      const v = 48 + Math.floor(r() * 26)
+      g.fillStyle = `rgb(${v},${v + 8},${v + 16})`
       g.fillRect(r() * 256, r() * 512, 1.5, 1.5)
     }
-    g.fillStyle = '#f2efe6'
+    g.fillStyle = '#e8f0f3'
     g.fillRect(14, 0, 7, 512)
     g.fillRect(235, 0, 7, 512)
-    g.fillStyle = '#f5c518'
+    g.fillStyle = '#8CC152'
     g.fillRect(124, 0, 8, 300)
     const tex = new THREE.CanvasTexture(c)
     tex.colorSpace = THREE.SRGBColorSpace
@@ -58,6 +57,53 @@ function useRoadTexture() {
     tex.anisotropy = 8
     return tex
   }, [])
+}
+
+/** Faint survey grid for the ground: the world as data. */
+function useGridTexture() {
+  return useMemo(() => {
+    const c = document.createElement('canvas')
+    c.width = 128
+    c.height = 128
+    const g = c.getContext('2d')!
+    g.fillStyle = '#eef2f1'
+    g.fillRect(0, 0, 128, 128)
+    g.fillStyle = '#cdd8d6'
+    g.fillRect(0, 0, 128, 2)
+    g.fillRect(0, 0, 2, 128)
+    g.fillStyle = '#e3eae8'
+    g.fillRect(0, 63, 128, 1)
+    g.fillRect(63, 0, 1, 128)
+    const tex = new THREE.CanvasTexture(c)
+    tex.colorSpace = THREE.SRGBColorSpace
+    tex.wrapS = THREE.RepeatWrapping
+    tex.wrapT = THREE.RepeatWrapping
+    tex.repeat.set(900 / 8, 700 / 8)
+    tex.anisotropy = 8
+    return tex
+  }, [])
+}
+
+/** Soft vertical sky gradient (a big inside-out sphere), not affected by fog. */
+function SkyDome() {
+  const mat = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        side: THREE.BackSide,
+        depthWrite: false,
+        fog: false,
+        uniforms: { top: { value: new THREE.Color('#bcd3e4') }, bottom: { value: new THREE.Color('#f3f6f7') } },
+        vertexShader: 'varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+        fragmentShader:
+          'uniform vec3 top; uniform vec3 bottom; varying vec3 vP; void main(){ float h = clamp(vP.y * 2.2 + 0.08, 0.0, 1.0); gl_FragColor = vec4(mix(bottom, top, pow(h, 0.8)), 1.0); }',
+      }),
+    [],
+  )
+  return (
+    <mesh material={mat} renderOrder={-1} frustumCulled={false}>
+      <sphereGeometry args={[4000, 32, 16]} />
+    </mesh>
+  )
 }
 
 interface Placed {
@@ -125,6 +171,7 @@ function Instanced({
 
 export default function World({ speed = 12 }: { speed?: number }) {
   const road = useRoadTexture()
+  const grid = useGridTexture()
   const offset = useRef(0)
 
   // Shared geometries / materials
@@ -147,11 +194,12 @@ export default function World({ speed = 12 }: { speed?: number }) {
   }, [])
   const mat = useMemo(
     () => ({
-      trunk: new THREE.MeshStandardMaterial({ color: '#7a5a3c', roughness: 0.9 }),
-      frond: new THREE.MeshStandardMaterial({ color: '#4f7a2a', roughness: 0.8, side: THREE.DoubleSide, flatShading: true }),
-      crown: new THREE.MeshStandardMaterial({ color: '#5f8a33', roughness: 0.85, flatShading: true }),
-      pole: new THREE.MeshStandardMaterial({ color: '#9a9690', roughness: 0.7 }),
-      shrub: new THREE.MeshStandardMaterial({ color: '#7d9a3c', roughness: 0.9, flatShading: true }),
+      // clay-white, with just a hint of green on the leaves
+      trunk: new THREE.MeshStandardMaterial({ color: '#dfe4e1', roughness: 0.9 }),
+      frond: new THREE.MeshStandardMaterial({ color: '#e6efdf', roughness: 0.85, side: THREE.DoubleSide, flatShading: true }),
+      crown: new THREE.MeshStandardMaterial({ color: '#eaf2e4', roughness: 0.9, flatShading: true }),
+      pole: new THREE.MeshStandardMaterial({ color: '#cdd5da', roughness: 0.7 }),
+      shrub: new THREE.MeshStandardMaterial({ color: '#e3ecdc', roughness: 0.9, flatShading: true }),
     }),
     [],
   )
@@ -173,14 +221,12 @@ export default function World({ speed = 12 }: { speed?: number }) {
     }))
   }, [])
 
-  // drei's <Sky> is a three.js Sky (a Mesh with a ShaderMaterial)
-  const sky = useRef<SkyImpl>(null)
   const sun = useRef<THREE.DirectionalLight>(null)
   const hemi = useRef<THREE.HemisphereLight>(null)
   const fog = useRef<THREE.Fog>(null)
   const dir = useMemo(() => new THREE.Vector3(), [])
   const c = useMemo(
-    () => ({ sunEve: new THREE.Color('#ffc27a'), sunDay: new THREE.Color('#fff1da'), fogEve: new THREE.Color('#f2c792'), fogDay: new THREE.Color('#e9eef0') }),
+    () => ({ sunEve: new THREE.Color('#fff3e2'), sunDay: new THREE.Color('#ffffff'), fogEve: new THREE.Color('#e9eff3'), fogDay: new THREE.Color('#f1f5f7') }),
     [],
   )
 
@@ -193,13 +239,6 @@ export default function World({ speed = 12 }: { speed?: number }) {
     // Finale: the sun rises to a bright morning
     const day = dayFactor()
     dir.copy(SUN_DIR).lerp(MORNING_DIR, day).normalize()
-    const mat = sky.current?.material as THREE.ShaderMaterial | undefined
-    if (mat?.uniforms?.sunPosition) {
-      mat.uniforms.sunPosition.value.copy(dir).multiplyScalar(100)
-      mat.uniforms.rayleigh.value = 2.6 - day * 0.8
-      mat.uniforms.turbidity.value = 9 - day * 2.5
-      mat.uniforms.mieCoefficient.value = 0.007 - day * 0.004
-    }
     if (sun.current) {
       sun.current.position.copy(dir).multiplyScalar(40)
       sun.current.color.copy(c.sunEve).lerp(c.sunDay, day)
@@ -208,28 +247,20 @@ export default function World({ speed = 12 }: { speed?: number }) {
     if (hemi.current) hemi.current.intensity = 1.25 + day * 0.35
     if (fog.current) {
       fog.current.color.copy(c.fogEve).lerp(c.fogDay, day)
-      fog.current.far = 300 + day * 150
+      fog.current.far = 380 + day * 150
     }
   })
 
   return (
     <>
-      <Sky
-        ref={sky}
-        distance={4500}
-        sunPosition={SUN_DIR.clone().multiplyScalar(100).toArray()}
-        turbidity={9}
-        rayleigh={2.6}
-        mieCoefficient={0.007}
-        mieDirectionalG={0.88}
-      />
-      <fog ref={fog} attach="fog" args={['#f2c792', 45, 300]} />
-      <hemisphereLight ref={hemi} args={['#ffe3b8', '#8a6a44', 1.25]} />
+      <SkyDome />
+      <fog ref={fog} attach="fog" args={['#e9eff3', 70, 380]} />
+      <hemisphereLight ref={hemi} args={['#ffffff', '#b7c4cb', 1.25]} />
       <directionalLight
         ref={sun}
         position={SUN_DIR.clone().multiplyScalar(40).toArray()}
         intensity={3.2}
-        color="#ffc27a"
+        color="#fff3e2"
         castShadow
         shadow-mapSize={[story.lowPower ? 1024 : 2048, story.lowPower ? 1024 : 2048]}
         shadow-camera-left={-12}
@@ -242,22 +273,22 @@ export default function World({ speed = 12 }: { speed?: number }) {
         shadow-normalBias={0.03}
       />
       {/* soft fill from the camera side so the truck front isn't black */}
-      <directionalLight position={[8, 6, 14]} intensity={1.4} color="#ffe9cc" />
+      <directionalLight position={[8, 6, 14]} intensity={1.4} color="#ffffff" />
 
       {/* Road */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, START_Z + LOOP / 2]} receiveShadow>
         <planeGeometry args={[7.4, LOOP]} />
         <meshStandardMaterial map={road} roughness={0.92} />
       </mesh>
-      {/* Red-earth shoulders */}
+      {/* Shoulders */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, START_Z + LOOP / 2]} receiveShadow>
         <planeGeometry args={[19, LOOP]} />
-        <meshStandardMaterial color="#b9784a" roughness={1} />
+        <meshStandardMaterial color="#dde3e4" roughness={1} />
       </mesh>
-      {/* Fields */}
+      {/* Ground: a faint survey grid */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, -150]} receiveShadow>
         <planeGeometry args={[900, 700]} />
-        <meshStandardMaterial color="#a8a24f" roughness={1} />
+        <meshStandardMaterial map={grid} roughness={1} />
       </mesh>
 
       <Instanced items={palms} geometry={geo.trunk} material={mat.trunk} offset={offset} castShadow />
@@ -272,7 +303,7 @@ export default function World({ speed = 12 }: { speed?: number }) {
       {hills.map((h, i) => (
         <mesh key={i} position={[h.x, 0, h.z]} scale={[h.sx, h.sy, h.sz]}>
           <icosahedronGeometry args={[1, 1]} />
-          <meshStandardMaterial color="#b98a6a" roughness={1} flatShading />
+          <meshStandardMaterial color="#e4e8e4" roughness={1} flatShading />
         </mesh>
       ))}
     </>

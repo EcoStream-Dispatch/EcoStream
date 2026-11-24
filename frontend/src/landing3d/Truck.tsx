@@ -29,13 +29,13 @@ export const TYRES: { id: string; x: number; z: number }[] = [
 export function useTruckMaterials() {
   return useMemo(
     () => ({
-      cab: new THREE.MeshPhysicalMaterial({ color: '#F7F5EE', metalness: 0.15, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.12 }),
-      cabLower: new THREE.MeshPhysicalMaterial({ color: '#0B1E36', metalness: 0.3, roughness: 0.35, clearcoat: 1, clearcoatRoughness: 0.15 }),
-      stripe: new THREE.MeshPhysicalMaterial({ color: '#5C9A35', metalness: 0.2, roughness: 0.35, clearcoat: 0.8 }),
-      body: new THREE.MeshPhysicalMaterial({ color: '#3E7231', metalness: 0.15, roughness: 0.45, clearcoat: 0.6 }),
-      bodyRib: new THREE.MeshStandardMaterial({ color: '#EDE8DA', roughness: 0.5 }),
-      tarp: new THREE.MeshStandardMaterial({ color: '#0B1E36', roughness: 0.8 }),
-      glass: new THREE.MeshPhysicalMaterial({ color: '#2a4058', metalness: 0.6, roughness: 0.08, clearcoat: 1 }),
+      cab: new THREE.MeshPhysicalMaterial({ color: '#13304F', metalness: 0.35, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.08 }),
+      cabLower: new THREE.MeshPhysicalMaterial({ color: '#0A1A2E', metalness: 0.35, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.12 }),
+      stripe: new THREE.MeshPhysicalMaterial({ color: '#8CC152', emissive: '#8CC152', emissiveIntensity: 0.9, metalness: 0.2, roughness: 0.35, clearcoat: 0.8 }),
+      body: new THREE.MeshPhysicalMaterial({ color: '#163A5E', metalness: 0.3, roughness: 0.3, clearcoat: 0.9, clearcoatRoughness: 0.1 }),
+      bodyRib: new THREE.MeshStandardMaterial({ color: '#8CC152', emissive: '#5C9A35', emissiveIntensity: 0.5, roughness: 0.4 }),
+      tarp: new THREE.MeshStandardMaterial({ color: '#0A1A2E', roughness: 0.6 }),
+      glass: new THREE.MeshPhysicalMaterial({ color: '#3d6a8c', metalness: 0.7, roughness: 0.05, clearcoat: 1 }),
       chrome: new THREE.MeshStandardMaterial({ color: '#d9dde2', metalness: 1, roughness: 0.22 }),
       dark: new THREE.MeshStandardMaterial({ color: '#1a1f24', metalness: 0.4, roughness: 0.6 }),
       chassis: new THREE.MeshStandardMaterial({ color: '#22272d', metalness: 0.5, roughness: 0.55 }),
@@ -244,7 +244,7 @@ export default function Truck({ speed = 8, materials, tyreMaterials, children }:
               ].map(([px, py, w, h], i) => (
                 <mesh key={i} position={[px, py, 0.002]}>
                   <planeGeometry args={[w, h]} />
-                  <meshStandardMaterial color="#b8b2a2" />
+                  <meshStandardMaterial color="#2c5378" />
                 </mesh>
               ))}
               <mesh position={[0.45, 2.05, 0.01]} material={m.chrome}>

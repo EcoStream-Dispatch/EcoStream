@@ -140,7 +140,7 @@ export default function Landing3D() {
   }, [])
 
   return (
-    <div className="relative bg-[#f2c792]">
+    <div className="relative bg-[#eef2f5]">
       {/* ---------- Fixed 3D canvas ---------- */}
       <div className="fixed inset-0 z-0" aria-hidden>
         <Experience startAt={startAt} onReady={onReady} paused={paused} />
