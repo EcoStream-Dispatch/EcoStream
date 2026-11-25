@@ -1,8 +1,24 @@
 {
   "version": 1,
   "compression": "EXT_meshopt_compression",
-  "totalBytes": 216988,
+  "totalBytes": 676076,
   "models": [
+    {
+      "id": "truck",
+      "title": "10-wheel tipper truck",
+      "description": "Generic Indian tipper truck with the EcoStream tyre sensors and in-cab unit.",
+      "files": {
+        "high": {
+          "url": "models/truck.glb",
+          "bytes": 253840
+        },
+        "low": {
+          "url": "models/truck-low.glb",
+          "bytes": 205248
+        },
+        "meta": "models/truck.meta.json"
+      }
+    },
     {
       "id": "wheel",
       "title": "Wheel and tyre sensor",

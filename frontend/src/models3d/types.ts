@@ -35,6 +35,8 @@ export interface ModelAnimation {
   pivot: Vec3
   speed?: number
   maxAngle?: number
+  /** Several nodes driven by one button (all wheels spin, both doors open), each with its own axis. */
+  targets?: { node: string; axis: Vec3 }[]
 }
 
 export interface ModelMeta {

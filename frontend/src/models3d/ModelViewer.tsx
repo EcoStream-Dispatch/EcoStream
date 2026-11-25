@@ -107,7 +107,7 @@ function Model({
   const nodes = useMemo(() => {
     const out = new Map<string, { obj: THREE.Object3D; base: THREE.Vector3; baseQ: THREE.Quaternion }>()
     scene.traverse((o) => {
-      if (parts.has(o.name) || meta.animations?.some((a) => a.node === o.name)) {
+      if (parts.has(o.name) || meta.animations?.some((a) => a.node === o.name || a.targets?.some((t) => t.node === o.name))) {
         out.set(o.name, { obj: o, base: o.position.clone(), baseQ: o.quaternion.clone() })
       }
     })
@@ -135,6 +135,7 @@ function Model({
       let owner: THREE.Object3D | null = m
       let ghost = false
       while (owner && !ghost) {
+        if (parts.get(owner.name)?.sealed) break // our sealed units never go see-through
         if (ghostIds.has(owner.name)) ghost = true
         owner = owner.parent
       }
@@ -143,7 +144,7 @@ function Model({
       if (meta.focus?.led && (m.name === meta.focus.led || m.parent?.name === meta.focus.led)) l.push(...mats)
     })
     return { ghostMats: g, ledMats: l }
-  }, [scene, meta])
+  }, [scene, meta, parts])
 
   useFrame((_, dt) => {
     const d = Math.min(dt, 0.05)
@@ -158,8 +159,6 @@ function Model({
     }
     // per-part animations
     for (const a of meta.animations ?? []) {
-      const n = nodes.get(a.node)
-      if (!n) continue
       const cur = angles.current[a.id] ?? 0
       let next = cur
       if (a.type === 'rotate') {
@@ -169,7 +168,10 @@ function Model({
         next = state.reduced ? target : cur + (target - cur) * Math.min(1, d * 2.5)
       }
       angles.current[a.id] = next
-      n.obj.quaternion.copy(n.baseQ).multiply(tmpQ.setFromAxisAngle(tmpV.set(...a.axis).normalize(), next))
+      for (const tg of a.targets ?? [{ node: a.node, axis: a.axis }]) {
+        const n = nodes.get(tg.node)
+        if (n) n.obj.quaternion.copy(n.baseQ).multiply(tmpQ.setFromAxisAngle(tmpV.set(...tg.axis).normalize(), next))
+      }
     }
     // X-ray: fade the ghost parts
     const gTarget = state.ghost ? 1 : 0
