@@ -42,6 +42,8 @@ const ShipperPage = lazy(() => import('./pages/ShipperPage'))
 const ModelsPage = lazy(() => import('./models3d/ModelsPage'))
 // The 3D landing page (three.js) is only loaded on "/", so the app itself stays light.
 const Landing3D = lazy(() => import('./landing3d/Landing3D'))
+// The night-story 3D landing (Blender models, realistic lighting): "?3d". The older stylised tour: "?3d=classic".
+const NightStory = lazy(() => import('./story3d/NightStory'))
 // The photo-real landing page (no three.js): the default.
 const PhotoStory = lazy(() => import('./landing3d/PhotoStory'))
 
@@ -53,6 +55,13 @@ function HomeRoute() {
   const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
   const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   if (reduced || params.has('static')) return <LandingPage />
+  if (params.has('3d') && hasWebGL() && params.get('3d') !== 'classic') {
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-[#04070b]" />}>
+        <NightStory />
+      </Suspense>
+    )
+  }
   if (params.has('3d') && hasWebGL()) {
     return (
       <Suspense fallback={<PhotoHero loading3d />}>

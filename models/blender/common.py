@@ -32,7 +32,7 @@ def reset_scene():
     return scene
 
 
-def material(name, color, metallic=0.0, roughness=0.5, emissive=None, emissive_strength=0.0, alpha=1.0, clearcoat=0.0):
+def material(name, color, metallic=0.0, roughness=0.5, emissive=None, emissive_strength=0.0, alpha=1.0, clearcoat=0.0, transmission=0.0, ior=1.5):
     """Principled BSDF material (exports as glTF PBR metallic-roughness)."""
     if name in bpy.data.materials:
         return bpy.data.materials[name]
@@ -50,6 +50,9 @@ def material(name, color, metallic=0.0, roughness=0.5, emissive=None, emissive_s
         er, eg, eb = hex_to_linear(emissive)
         bsdf.inputs["Emission Color"].default_value = (er, eg, eb, 1.0)
         bsdf.inputs["Emission Strength"].default_value = emissive_strength
+    if transmission:
+        bsdf.inputs["Transmission Weight"].default_value = transmission
+        bsdf.inputs["IOR"].default_value = ior
     if alpha < 1.0:
         bsdf.inputs["Alpha"].default_value = alpha
         m.surface_render_method = "BLENDED"

@@ -328,12 +328,15 @@ export default function ModelViewer({
   className = '',
   height = 'h-[460px] md:h-[560px]',
   showPartList = true,
+  autoShowcase = false,
 }: {
   model: ManifestModel
   meta: ModelMeta
   className?: string
   height?: string
   showPartList?: boolean
+  /** Parts showcase: step through every part (info card + highlight) until the visitor interacts. */
+  autoShowcase?: boolean
 }) {
   const { t } = useLang()
   const reduced = useMemo(prefersReducedMotion, [])
@@ -345,6 +348,18 @@ export default function ModelViewer({
   const [ghost, setGhost] = useState(false)
   const [focusNonce, setFocusNonce] = useState(0)
   const controlsRef = useRef<OrbitControlsImpl | null>(null)
+  useEffect(() => {
+    if (!autoShowcase || interacted) return
+    const list = meta.parts.filter((p) => !p.partOf)
+    let i = 0
+    setExplode(0.35)
+    setSelected(list[0]?.id ?? null)
+    const t = setInterval(() => {
+      i = (i + 1) % list.length
+      setSelected(list[i].id)
+    }, 3200)
+    return () => clearInterval(t)
+  }, [autoShowcase, interacted, meta])
   const focus = meta.focus
   const showFocus = () => {
     if (!focus) return

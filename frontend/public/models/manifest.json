@@ -1,7 +1,7 @@
 {
   "version": 1,
   "compression": "EXT_meshopt_compression",
-  "totalBytes": 3464448,
+  "totalBytes": 7576028,
   "models": [
     {
       "id": "truck",
@@ -10,11 +10,11 @@
       "files": {
         "high": {
           "url": "models/truck.glb",
-          "bytes": 253840
+          "bytes": 2752436
         },
         "low": {
           "url": "models/truck-low.glb",
-          "bytes": 205248
+          "bytes": 1818232
         },
         "meta": "models/truck.meta.json"
       }
