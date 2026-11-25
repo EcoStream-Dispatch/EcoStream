@@ -27,7 +27,7 @@ const KEYS: { id: SectionId; key: Key; port?: Key }[] = [
   { id: 'hero', key: { pos: [11, 2.6, -5.0], look: [1.6, 1.5, -3.6] }, port: { pos: [14.5, 3.8, -8], look: [0, -0.6, 0.5] } },
   { id: 'xray', key: { pos: [8.2, 7.2, 7.2], look: [-0.6, 0.6, -0.4] }, port: { pos: [11, 13, 12], look: [0, 0.2, 0] } },
   { id: 'leak', key: { pos: [-5.2, 1.4, 5.6], look: [-0.9, 0.75, 1.3] }, port: { pos: [-8, 2.8, 8.8], look: [-1, -0.4, 1.4] } },
-  { id: 'hotleak', key: { pos: [9.6, 2.4, -6.2], look: [0.0, 0.8, -10.4] }, port: { pos: [16.5, 5, -9.2], look: [0, -1.2, -9.2] } },
+  { id: 'hotleak', key: { pos: [9.6, 2.4, -6.2], look: [-1.0, 0.8, -8.0] }, port: { pos: [16.5, 5, -9.2], look: [0, -1.2, -9.2] } },
   { id: 'journey', key: { pos: [-9.5, 9.5, 12], look: [5.5, 9, -24] }, port: { pos: [-14, 14, 20], look: [5, 7, -24] } },
   { id: 'map', key: { pos: [-8, MAP_Y + 62, 26], look: [-6, MAP_Y, -4.5] }, port: { pos: [0, MAP_Y + 150, 16], look: [0, MAP_Y, 4] } },
   { id: 'finale', key: { pos: [8.8, 3.0, -2.5], look: [-1.2, 1.7, -16.5] }, port: { pos: [12, 5, -1], look: [0, -0.5, -18] } },

@@ -291,6 +291,84 @@ function Silhouettes() {
   )
 }
 
+/** Shallow puddles: near-mirror patches that catch the sodium lamps and the headlights. */
+function Puddles() {
+  const shapes = useMemo(() => {
+    let s = 5
+    const r = () => ((s = (s * 16807) % 2147483647) / 2147483647)
+    return Array.from({ length: 9 }, () => ({
+      x: -9 + r() * 12.5,
+      z: -16 + r() * 26,
+      sx: 0.5 + r() * 1.2,
+      sz: 0.35 + r() * 0.8,
+      rot: r() * Math.PI,
+    }))
+  }, [])
+  const geo = useMemo(() => {
+    // irregular blob outline
+    const sh = new THREE.Shape()
+    const n = 28
+    for (let i = 0; i <= n; i++) {
+      const a = (i / n) * Math.PI * 2
+      const rr = 1 + 0.18 * Math.sin(a * 3 + 1) + 0.1 * Math.sin(a * 7)
+      const x = Math.cos(a) * rr
+      const y = Math.sin(a) * rr
+      if (i === 0) sh.moveTo(x, y)
+      else sh.lineTo(x, y)
+    }
+    return new THREE.ShapeGeometry(sh, 4)
+  }, [])
+  return (
+    <group>
+      {shapes.map((p, i) => (
+        <mesh key={i} geometry={geo} position={[p.x, 0.006, p.z]} rotation={[-Math.PI / 2, 0, p.rot]} scale={[p.sx, p.sz, 1]} receiveShadow>
+          <meshPhysicalMaterial color="#202226" roughness={0.1} metalness={0.3} clearcoat={1} clearcoatRoughness={0.05} transparent opacity={0.7} depthWrite={false} polygonOffset polygonOffsetFactor={-2} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** Dust and insects drifting through the lamp light. */
+function Motes() {
+  const pts = useRef<THREE.Points>(null)
+  const { geo, base } = useMemo(() => {
+    const n = 900
+    const p = new Float32Array(n * 3)
+    let s = 9
+    const r = () => ((s = (s * 16807) % 2147483647) / 2147483647)
+    for (let i = 0; i < n; i++) {
+      const lamp = LAMP_ZS[i % LAMP_ZS.length]
+      const a = r() * Math.PI * 2
+      const rad = Math.sqrt(r()) * 3.2
+      p[i * 3] = 2.45 + Math.cos(a) * rad
+      p[i * 3 + 1] = 0.3 + r() * 8.3
+      p[i * 3 + 2] = lamp + Math.sin(a) * rad
+    }
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.BufferAttribute(p, 3))
+    return { geo: g, base: p.slice() }
+  }, [])
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    const a = geo.attributes.position as THREE.BufferAttribute
+    for (let i = 0; i < a.count; i++) {
+      a.setXYZ(
+        i,
+        base[i * 3] + Math.sin(t * 0.3 + i) * 0.25,
+        base[i * 3 + 1] + Math.sin(t * 0.2 + i * 1.7) * 0.3,
+        base[i * 3 + 2] + Math.cos(t * 0.25 + i * 0.7) * 0.25,
+      )
+    }
+    a.needsUpdate = true
+  })
+  return (
+    <points ref={pts} geometry={geo} raycast={() => null}>
+      <pointsMaterial color="#ffcf9a" size={0.035} transparent opacity={0.7} depthWrite={false} blending={THREE.AdditiveBlending} />
+    </points>
+  )
+}
+
 export default function NightWorld() {
   const asphalt = useMemo(() => makeAsphalt(10, 3), [])
   const shoulder = useMemo(() => makeAsphalt(6, 9), [])
@@ -333,6 +411,8 @@ export default function NightWorld() {
         </mesh>
       ))}
       <Barrier />
+      <Puddles />
+      {!quality.low && <Motes />}
       {LAMP_ZS.map((z, i) => (
         <StreetLamp key={z} z={z} shadow={!quality.low && i === 1} />
       ))}

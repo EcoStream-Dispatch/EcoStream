@@ -6,6 +6,7 @@ import { asset } from '../lib/asset'
 import { leakAt } from '../landing3d/store'
 import { phases, SPOTS } from './phases'
 import { LightCone } from './NightWorld'
+import { addGrime } from './grime'
 
 /*
  * The Blender truck (frontend/public/models/truck.glb) in the night story.
@@ -115,6 +116,14 @@ export default function TruckRig({ url, labels = true }: { url: string; labels?:
         edges.push(e)
       }
     })
+    // road dust: body paint, chassis, tyres and wheel metal (not glass, lamps or our sealed units)
+    seen.forEach((m) => {
+      const n = m.name
+      if (SENSOR_MATS.has(n) || /glass|lens|headlight|reflector|amber|tail_red|gravel|unit_|plate/.test(n)) return
+      const tyre = TYRE_MATS.has(n)
+      addGrime(m, tyre ? 0.7 : n.includes('chassis') || n.includes('steel') ? 1.0 : 0.85, tyre ? 1.1 : 1.45)
+    })
+    if (leakTyre) addGrime(leakTyre as THREE.MeshStandardMaterial, 0.7, 1.1)
     // a cab material used by both groups would be listed once: dedupe by material
     const uniq = (a: Ghostable[]) => a.filter((g, i) => a.findIndex((h) => h.mat === g.mat) === i)
     return { scene, body: uniq(body), cab: uniq(cab), tyres: uniq(tyres), wheels, leakTyre: leakTyre as THREE.MeshStandardMaterial | null, leds, edges, edgeMat }
