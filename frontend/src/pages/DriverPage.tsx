@@ -177,6 +177,23 @@ function Cockpit() {
               </div>
             </div>
 
+            {/* Driver pages from the team repo: my trip, SOS help, past trips */}
+            <nav className="flex flex-wrap gap-2" aria-label="Driver pages">
+              {[
+                { to: '/driver/trip', label: 'My trip' },
+                { to: '/driver/sos', label: 'SOS & help' },
+                { to: '/driver/history', label: 'My trips' },
+              ].map((l) => (
+                <Link
+                  key={l.to}
+                  to={l.to}
+                  className="inline-flex min-h-[44px] items-center rounded-lg bg-white px-4 text-sm font-semibold text-navy-900 shadow-sm ring-1 ring-green-500/15 hover:ring-green-500"
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+
             {/* Navy banner: the one thing to do now, with voice */}
             {alert ? <AlertBanner alert={alert} truck={truck} onFullScreen={() => setPreview(true)} /> : <AllGood />}
 

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Building2, ChevronRight, LogOut, Phone, Receipt, Tag, UserRound, type LucideIcon } from 'lucide-react'
+import { BrainCircuit, Building2, ChevronRight, LogOut, Package, Phone, Receipt, Settings, Tag, UserRound, Wrench, type LucideIcon } from 'lucide-react'
 import { getOwner, getTrucks } from '../services/api'
 import { useApi } from '../hooks/useApi'
 import { useAuth } from '../auth/AuthProvider'
@@ -83,6 +83,25 @@ export default function ProfilePage() {
             ))}
           </ul>
         )}
+      </section>
+
+      {/* More pages (on phones the tab bar has room for five; the rest are here) */}
+      <section className="mt-4 rounded-2xl bg-white p-2 shadow-sm ring-1 ring-gray-200 md:hidden" aria-label="More">
+        {(
+          [
+            { to: '/owner/shipments', key: 'nav.shipments', icon: Package },
+            { to: '/owner/predictive', key: 'nav.predictive', icon: BrainCircuit },
+            { to: '/owner/garages', key: 'nav.garages', icon: Wrench },
+            { to: '/plans', key: 'nav.plans', icon: Tag },
+            { to: '/owner/settings', key: 'nav.settings', icon: Settings },
+          ] as const
+        ).map(({ to, key, icon: Icon }) => (
+          <Link key={to} to={to} className="flex min-h-[48px] items-center gap-3 rounded-lg px-3 font-semibold text-navy-900 hover:bg-green-50">
+            <Icon size={20} className="text-green-700" aria-hidden />
+            <span className="flex-1">{tr(key)}</span>
+            <ChevronRight size={18} className="text-navy-700" aria-hidden />
+          </Link>
+        ))}
       </section>
 
       {/* Settings */}

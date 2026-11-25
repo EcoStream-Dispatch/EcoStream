@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router-dom'
-import { BarChart3, BellRing, CircleUserRound, LogOut, Tag, Truck, Users } from 'lucide-react'
+import { BarChart3, BellRing, BrainCircuit, CircleUserRound, LogOut, Package, Settings, Tag, Truck, Users, Wrench } from 'lucide-react'
 import Wordmark from './Wordmark'
 import { USING_MOCK_DATA } from '../services/api'
 import { LiveProvider, useLiveStatus } from '../services/live'
@@ -19,7 +19,12 @@ const NAV = [
   { to: '/alerts', label: 'nav.alerts' as const, icon: BellRing, phone: true },
   { to: '/drivers', label: 'nav.drivers' as const, icon: Users, phone: true },
   { to: '/reports', label: 'nav.reports' as const, icon: BarChart3, phone: true },
+  // From the team repo (Adithya): shipments, predictive, garages, settings
+  { to: '/owner/shipments', label: 'nav.shipments' as const, icon: Package, phone: false },
+  { to: '/owner/predictive', label: 'nav.predictive' as const, icon: BrainCircuit, phone: false },
+  { to: '/owner/garages', label: 'nav.garages' as const, icon: Wrench, phone: false },
   { to: '/plans', label: 'nav.plans' as const, icon: Tag, phone: false },
+  { to: '/owner/settings', label: 'nav.settings' as const, icon: Settings, phone: false },
   { to: '/profile', label: 'nav.profile' as const, icon: CircleUserRound, phone: true },
 ]
 const PHONE_NAV = NAV.filter((n) => n.phone)

@@ -7,7 +7,8 @@
 --
 -- What it does:
 --   1. Adds a temporary second owner ("owner B") with one truck, tyre, reading and alert,
---      plus one reading and alert for the demo owner ("owner A").
+--      plus one reading and alert for the demo owner ("owner A"), and a temporary
+--      driver ("D") and shipper ("S") login (stage W2: roles).
 --   2. Pretends to be owner A, then owner B, then a logged-out visitor, and counts
 --      what each one can see or change.
 --   3. Throws all the test data away again (nothing is saved).
@@ -23,6 +24,8 @@ declare
   b        uuid := gen_random_uuid();     -- temporary owner B
   b_truck  uuid := gen_random_uuid();
   b_tyre   uuid := gen_random_uuid();
+  d        uuid := gen_random_uuid();     -- temporary driver login
+  s        uuid := gen_random_uuid();     -- temporary shipper login
   a_tyre   uuid;
   a_alert  uuid;
   a_trucks bigint;
@@ -42,6 +45,13 @@ begin
     insert into auth.users (id, email, aud, role)
       values (b, 'rls-test-' || b || '@example.com', 'authenticated', 'authenticated');
     insert into public.fleet_owners (id, name) values (b, 'RLS test owner B');
+    insert into public.profiles (id, role, full_name) values (b, 'owner', 'RLS test owner B');
+    insert into auth.users (id, email, aud, role) values
+      (d, 'rls-test-' || d || '@example.com', 'authenticated', 'authenticated'),
+      (s, 'rls-test-' || s || '@example.com', 'authenticated', 'authenticated');
+    insert into public.profiles (id, role, full_name) values
+      (d, 'driver', 'RLS test driver'),
+      (s, 'shipper', 'RLS test shipper');
     insert into public.trucks (id, owner_id, reg_no, axle_config)
       values (b_truck, b, 'RLS-TEST-' || left(b::text, 8), '6W');
     insert into public.tyres (id, truck_id, position, sensor_id, recommended_cold_kpa)
@@ -101,9 +111,80 @@ begin
     end;
     names := array_append(names, 'A cannot insert readings directly'); exps := exps || 0::bigint; acts := acts || n;
 
-    with u as (update public.alerts set acknowledged_at = now() where id = a_alert returning 1)
-      select count(*) into n from u;
+    -- Blocked either by row-level security (0 rows) or by missing UPDATE permission (error).
+    begin
+      with u as (update public.alerts set acknowledged_at = now() where id = a_alert returning 1)
+        select count(*) into n from u;
+    exception when insufficient_privilege then
+      n := 0;
+    end;
     names := array_append(names, 'A cannot update alerts directly'); exps := exps || 0::bigint; acts := acts || n;
+    -- Blocked either by row-level security (0 rows) or by missing UPDATE permission (error).
+    begin
+      with u as (update public.alerts set resolved_at = now() where id = a_alert returning 1)
+        select count(*) into n from u;
+    exception when insufficient_privilege then
+      n := 0;
+    end;
+    names := array_append(names, 'A cannot resolve alerts directly'); exps := exps || 0::bigint; acts := acts || n;
+
+    -- ----- Profiles and roles (stage W2), still as owner A -----
+    select count(*) into n from public.profiles;
+    names := array_append(names, 'A sees only own login profile'); exps := exps || 1::bigint; acts := acts || n;
+    select count(*) into n from public.profiles where id = a and role = 'owner';
+    names := array_append(names, 'A''s role is owner'); exps := exps || 1::bigint; acts := acts || n;
+    with u as (update public.profiles set full_name = full_name where id = a returning 1)
+      select count(*) into n from u;
+    names := array_append(names, 'A can update own name'); exps := exps || 1::bigint; acts := acts || n;
+    with u as (update public.profiles set full_name = 'hacked' where id = b returning 1)
+      select count(*) into n from u;
+    names := array_append(names, 'A cannot update B''s profile'); exps := exps || 0::bigint; acts := acts || n;
+    begin
+      update public.profiles set role = 'shipper' where id = a;
+      n := 1;  -- role changed = bad
+    exception when insufficient_privilege then
+      n := 0;
+    end;
+    names := array_append(names, 'A cannot change own role'); exps := exps || 0::bigint; acts := acts || n;
+    begin
+      insert into public.profiles (id, role) values (gen_random_uuid(), 'owner');
+      n := 1;
+    exception when insufficient_privilege then
+      n := 0;
+    end;
+    names := array_append(names, 'A cannot create profiles'); exps := exps || 0::bigint; acts := acts || n;
+    begin
+      delete from public.profiles where id = a;
+      n := 1;
+    exception when insufficient_privilege then
+      n := 0;
+    end;
+    names := array_append(names, 'A cannot delete profiles'); exps := exps || 0::bigint; acts := acts || n;
+
+    -- ----- Act as driver D: owner data must stay hidden -----
+    perform set_config('request.jwt.claims', json_build_object('sub', d, 'role', 'authenticated')::text, true);
+    select count(*) into n from public.trucks;
+    names := array_append(names, 'Driver sees no trucks'); exps := exps || 0::bigint; acts := acts || n;
+    select count(*) into n from public.readings;
+    names := array_append(names, 'Driver sees no readings'); exps := exps || 0::bigint; acts := acts || n;
+    select count(*) into n from public.alerts;
+    names := array_append(names, 'Driver sees no alerts'); exps := exps || 0::bigint; acts := acts || n;
+    select count(*) into n from public.profiles;
+    names := array_append(names, 'Driver sees only own profile'); exps := exps || 1::bigint; acts := acts || n;
+    begin
+      update public.profiles set role = 'owner' where id = d;
+      n := 1;
+    exception when insufficient_privilege then
+      n := 0;
+    end;
+    names := array_append(names, 'Driver cannot make self an owner'); exps := exps || 0::bigint; acts := acts || n;
+
+    -- ----- Act as shipper S -----
+    perform set_config('request.jwt.claims', json_build_object('sub', s, 'role', 'authenticated')::text, true);
+    select count(*) into n from public.trucks;
+    names := array_append(names, 'Shipper sees no trucks'); exps := exps || 0::bigint; acts := acts || n;
+    select count(*) into n from public.alerts;
+    names := array_append(names, 'Shipper sees no alerts'); exps := exps || 0::bigint; acts := acts || n;
 
     -- ----- Act as owner B -----
     perform set_config('request.jwt.claims', json_build_object('sub', b, 'role', 'authenticated')::text, true);
@@ -119,6 +200,8 @@ begin
     names := array_append(names, 'Logged-out visitor sees no trucks'); exps := exps || 0::bigint; acts := acts || n;
     select count(*) into n from public.garages;
     names := array_append(names, 'Logged-out visitor sees no garages'); exps := exps || 0::bigint; acts := acts || n;
+    select count(*) into n from public.profiles;
+    names := array_append(names, 'Logged-out visitor sees no profiles'); exps := exps || 0::bigint; acts := acts || n;
 
     -- Throw away all test data.
     raise exception using errcode = 'RLSRB', message = 'rollback test data';

@@ -3,11 +3,10 @@
 About 15 minutes. You need: a browser, and a password manager for the passwords and keys.
 
 Files you will paste from:
-- `supabase/migrations/20261120000001_init_schema.sql`: tables, indexes, row-level security, realtime
-- `supabase/migrations/20261120000002_readings_retention.sql`: deletes readings older than 30 days
-- `supabase/migrations/20261120000003_latest_reading_view.sql`: fast "latest reading per tyre" view
-- `supabase/seed.sql`: demo owner, 2 trucks × 6 tyres, 13 fake garages
-- `supabase/tests/rls_check.sql`: checks owners only see their own data
+- `supabase/setup_all.sql`: **all tables, security rules, realtime and clean-up job in one file**
+  (it is the files in `supabase/migrations/` joined in order)
+- `supabase/seed.sql`: demo owner, 2 trucks × 6 tyres, 13 fake garages (+ demo driver / shipper roles)
+- `supabase/tests/rls_check.sql`: checks everyone only sees their own data (34 checks)
 
 > Supabase changes its dashboard now and then. If a menu name below doesn't match exactly, look for the closest one.
 
@@ -18,16 +17,23 @@ Files you will paste from:
    - **Database password:** click *Generate*, then **save it in your password manager**. You rarely need it, but you can't see it again.
    - **Region:** *South Asia (Mumbai)*, the closest to our trucks.
    - **Plan:** Free.
+   - **Data access:** tick **Enable Data API**, **Grant API access to new tables automatically** and
+     **Enable RLS on new tables automatically**. (Our SQL also sets the permissions itself, so it
+     works even if one is missed.)
 3. Click **Create new project** and wait 1–2 minutes until it says the project is ready.
 
-## 2. Create the tables
+## 2. Create the tables (one paste)
 1. Left menu → **SQL Editor** → **New query**.
-2. Open `supabase/migrations/20261120000001_init_schema.sql`, copy **all** of it, paste, click **Run**.
+2. Open `supabase/setup_all.sql`, copy **all** of it, paste, click **Run**.
    You should see *Success. No rows returned*.
-3. New query again. Paste all of `supabase/migrations/20261120000002_readings_retention.sql` → **Run**.
-   - If it says *extension "pg_cron" is not available*: left menu → **Database** → **Extensions** → search `pg_cron` → enable it → run the file again.
-4. New query again. Paste all of `supabase/migrations/20261120000003_latest_reading_view.sql` → **Run**.
-5. Check: left menu → **Table Editor**. You should see 7 tables: `alerts`, `devices`, `fleet_owners`, `garages`, `readings`, `trucks`, `tyres`.
+   - If it says *extension "pg_cron" is not available*: left menu → **Database** → **Extensions** →
+     search `pg_cron` → enable it → then run the file again in a **new** query.
+   - If it says something *already exists*: it was already run once. That's fine; go on.
+3. Check: left menu → **Table Editor**. You should see 8 tables: `alerts`, `devices`, `fleet_owners`,
+   `garages`, `profiles`, `readings`, `trucks`, `tyres`.
+
+(Developers: the same SQL is split by stage in `supabase/migrations/`. After changing a migration,
+run `cd supabase && sh make_setup_all.sh`; `npm test` in `supabase/tests` fails if you forget.)
 
 ## 3. Create the demo owner login
 1. Left menu → **Authentication** → **Users** → **Add user** → **Create new user**.
@@ -35,17 +41,30 @@ Files you will paste from:
    **Password:** make one up, and **save it in your password manager**. You'll use it to log in to the dashboard in Stage 6.
 3. Tick **Auto Confirm User** → **Create user**.
 
+Optional, to try the other portals: create two more users the same way,
+`demo.driver@example.com` and `demo.shipper@example.com`. The seed (step 4) gives them the
+Driver and Shipper role. Without them, only the Owner portal can be logged in to.
+
 Recommended: **Authentication → Sign In / Providers → Email** → turn **off** "Allow new users to sign up".
-Then strangers can't create accounts. You add owners by hand (step 3) for now.
+Then strangers can't create accounts. You add users by hand (step 3) for now.
+
+**Roles:** every login needs a row in the `profiles` table with `role` = `owner`, `driver` or `shipper`,
+or it can't open any portal. Users can't change their own role. To give a new user a role:
+`insert into profiles (id, role, full_name) select id, 'driver', 'Name' from auth.users where email = '...';`
+
+**Why email + password and not phone + OTP:** Supabase can only text OTP codes after an SMS
+provider (Twilio, MessageBird, Vonage or Textlocal) is connected under **Authentication → Sign In /
+Providers → Phone**. That needs a paid account with the SMS provider. Email + password works on
+the free plan, so we use it for the prototype.
 
 ## 4. Add the seed data
 SQL Editor → New query → paste all of `supabase/seed.sql` → **Run**.
-Check in Table Editor: `trucks` has 2 rows, `tyres` 12, `garages` 13.
+Check in Table Editor: `trucks` has 2 rows, `tyres` 12, `garages` 13, `profiles` 1 (or 3 with the optional driver and shipper).
 (Safe to run again: it replaces the old seed rows.)
 
 ## 5. Check the security (acceptance criterion 5)
 SQL Editor → New query → paste all of `supabase/tests/rls_check.sql` → **Run**.
-You get a table of 18 checks. **Every row must say PASS.** It cleans up after itself.
+You get a table of 34 checks (18 from Stage 6, 15 for login roles, 1 for resolving alerts). **Every row must say PASS.** It cleans up after itself.
 If anything says FAIL, stop and tell Hari/Claude. Don't put real data in yet.
 
 ## 6. Check realtime is on

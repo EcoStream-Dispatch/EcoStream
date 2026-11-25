@@ -76,6 +76,32 @@ def test_critical_alert_shows_on_truck_and_can_be_acknowledged(client):
     assert client.get("/api/trucks", headers=AUTH).json()[0]["status"] == "ok"
 
 
+def test_resolve_marks_resolved_and_acknowledged(client):
+    send(client, [reading("1A0003", pressure=600, temp=20)])
+    [alert] = client.get("/api/alerts?open=true", headers=AUTH).json()
+    r = client.post(f"/api/alerts/{alert['id']}/resolve", headers=AUTH)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["resolved_at"] is not None
+    assert body["acknowledged_at"] is not None  # resolving also acknowledges
+    assert client.get("/api/alerts?open=true", headers=AUTH).json() == []
+    assert client.get("/api/trucks", headers=AUTH).json()[0]["status"] == "ok"
+
+
+def test_resolve_after_ack_keeps_first_ack_time(client):
+    send(client, [reading("1A0003", pressure=600, temp=20)])
+    [alert] = client.get("/api/alerts?open=true", headers=AUTH).json()
+    acked = client.post(f"/api/alerts/{alert['id']}/ack", headers=AUTH).json()
+    resolved = client.post(f"/api/alerts/{alert['id']}/resolve", headers=AUTH).json()
+    assert resolved["acknowledged_at"] == acked["acknowledged_at"]
+    assert resolved["resolved_at"] is not None
+
+
+def test_resolve_unknown_alert_is_404(client):
+    r = client.post("/api/alerts/11111111-1111-4111-8111-999999999999/resolve", headers=AUTH)
+    assert r.status_code == 404
+
+
 def test_ack_unknown_alert_is_404(client):
     r = client.post("/api/alerts/11111111-1111-4111-8111-999999999999/ack", headers=AUTH)
     assert r.status_code == 404

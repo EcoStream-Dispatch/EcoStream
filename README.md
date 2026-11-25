@@ -42,7 +42,35 @@ Open http://localhost:5173 and log in. Without Supabase keys the frontend runs i
 **Online demo (demo data, no login):** https://ecostream-dispatch.github.io/EcoStream/,
 published automatically from `main` by `.github/workflows/pages.yml`.
 
-Current results against the acceptance criteria: [`docs/STATUS.md`](docs/STATUS.md).
+What works, what is sample data and what isn't tested: [`docs/STATUS.md`](docs/STATUS.md).
+Screenshots of every page (phone and desktop): [`docs/screenshots/`](docs/screenshots/README.md).
+
+## The website
+One login (Owner / Driver / Shipper) and three portals, specified in [`docs/WEBSITE_SPEC.md`](docs/WEBSITE_SPEC.md).
+In demo mode (no Supabase keys) you pick a role on the login page, no password needed.
+
+| Address | What |
+|---|---|
+| `/`, `/plans`, `/garages/join`, `/about` | Public site |
+| `/login` | One login with a role selector |
+| `/owner/...` | Owner portal: dashboard, live map, trucks, predictive maintenance, alerts, shipments, drivers, garages, reports, plan & billing, settings |
+| `/driver/...` | Driver portal (mobile first): my trip, truck health, alert with voice, SOS, my trips |
+| `/shipper/...` | Shipper portal: my shipments, tracking, delivery & invoices |
+
+## Tests
+```bash
+cd api && .venv/bin/pytest -q
+```
+```bash
+cd supabase/tests && npm test
+```
+```bash
+cd frontend && npm test
+```
+Page check (screenshots of every page at 360 and 1440 px), with `npm run dev` running in another terminal:
+```bash
+cd frontend && npx playwright install chromium && npm run check-pages
+```
 
 ## Secrets
 Copy `.env.example` to `.env` (repo root) and fill it in. `.env` is gitignored. Never commit real keys.

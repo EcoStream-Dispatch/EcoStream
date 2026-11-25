@@ -32,12 +32,14 @@ const read = (p) => fs.readFileSync(dir + '/' + p, 'utf8')
     create function cron.schedule(n text, s text, c text) returns int language sql as
       $$ insert into cron.job values (n, s, c) on conflict (jobname) do update set schedule = s, command = c returning 1 $$;
   `)
+  // Run setup_all.sql (what people paste into Supabase), after checking it contains every migration.
   const mig = fs.readdirSync(dir + '/migrations').filter((f) => f.endsWith('.sql')).sort()
+  const all = read('setup_all.sql')
   for (const f of mig) {
-    let sql = read('migrations/' + f).replace(/create extension if not exists (pg_cron|pgcrypto);/g, '-- (stubbed) $&')
-    await db.exec(sql)
-    console.log('migration ok:', f)
+    if (!all.includes(read('migrations/' + f))) throw new Error(`setup_all.sql is out of date (${f}): run "sh make_setup_all.sh"`)
   }
+  await db.exec(all.replace(/create extension if not exists (pg_cron|pgcrypto);/g, '-- (stubbed) $&'))
+  console.log(`setup_all.sql ok (${mig.length} migrations)`)
   // Seed should fail clearly before the user exists
   try { await db.exec(read('seed.sql')); console.log('UNEXPECTED: seed ran without user') }
   catch (e) { console.log('seed without user -> error (expected):', e.message) }
@@ -45,7 +47,7 @@ const read = (p) => fs.readFileSync(dir + '/' + p, 'utf8')
   await db.exec(read('seed.sql'))
   await db.exec(read('seed.sql')) // run twice: must be re-runnable
   const counts = await db.query(`select (select count(*) from trucks) trucks, (select count(*) from tyres) tyres,
-    (select count(*) from devices) devices, (select count(*) from garages) garages, (select count(*) from fleet_owners) owners`)
+    (select count(*) from devices) devices, (select count(*) from garages) garages, (select count(*) from fleet_owners) owners, (select count(*) from profiles) profiles`)
   console.log('after seeding twice:', counts.rows[0])
   // Impossible-value check constraints
   try { await db.exec(`insert into readings (tyre_id, ts, pressure_kpa, temp_c, corrected_kpa) select id, now(), 1600, 30, 1 from tyres limit 1`); console.log('UNEXPECTED: 1600 kPa accepted') }
@@ -61,8 +63,8 @@ const read = (p) => fs.readFileSync(dir + '/' + p, 'utf8')
   const res = await db.exec(read('tests/rls_check.sql'))
   const rows = res[res.length - 1].rows
   console.table(rows)
-  console.log('test data left behind (expect 2 trucks, 1 owner):',
-    (await db.query(`select (select count(*) from trucks) t, (select count(*) from fleet_owners) o, (select count(*) from auth.users) u`)).rows[0])
+  console.log('test data left behind (expect 2 trucks, 1 owner, 1 profile, 1 user):',
+    (await db.query(`select (select count(*) from trucks) t, (select count(*) from fleet_owners) o, (select count(*) from profiles) p, (select count(*) from auth.users) u`)).rows[0])
   const ok = rows.every((r) => r.result === 'PASS')
   console.log(ok ? 'ALL RLS CHECKS PASS' : 'SOME RLS CHECKS FAILED')
   if (!ok) process.exit(1)

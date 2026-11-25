@@ -15,6 +15,23 @@ import ReportsPage from './pages/ReportsPage'
 import { Loading } from './components/PageState'
 import PhotoHero from './landing3d/PhotoHero'
 import { hasWebGL } from './landing3d/store'
+import {
+  AboutPage,
+  CreateShipmentPage,
+  DriverHistoryPage,
+  DriverLayout,
+  DriverPortal,
+  GaragesJoinPage,
+  GaragesPage,
+  Lazy,
+  MyTripPage,
+  PredictivePage,
+  RedirectParam,
+  SettingsPage,
+  ShipmentRoutingPage,
+  ShipmentsPage,
+  SosPage,
+} from './portal/routes'
 
 // The Truck page pulls in the chart library (recharts), which is big.
 // Loading it only when needed keeps the first page load fast on phones.
@@ -58,6 +75,25 @@ export default function App() {
     <Routes>
       <Route path="/" element={<HomeRoute />} />
       <Route path="/login" element={<LoginPage />} />
+      {/* Public pages from the team repo (Adithya, W1) */}
+      <Route path="/about" element={<Lazy what="page"><AboutPage /></Lazy>} />
+      <Route path="/garages/join" element={<Lazy what="page"><GaragesJoinPage /></Lazy>} />
+      {/* Driver pages from the team repo (Adithya, W5): my trip, SOS, my trips */}
+      <Route
+        element={
+          <RequireAuth>
+            <DriverPortal />
+          </RequireAuth>
+        }
+      >
+        <Route element={<Lazy what="driver"><DriverLayout /></Lazy>}>
+          <Route path="/driver/trip" element={<Lazy what="your trip"><MyTripPage /></Lazy>} />
+          <Route path="/driver/sos" element={<Lazy what="SOS"><SosPage /></Lazy>} />
+          <Route path="/driver/history" element={<Lazy what="your trips"><DriverHistoryPage /></Lazy>} />
+        </Route>
+      </Route>
+      <Route path="/driver/truck" element={<Navigate to="/driver" replace />} />
+      <Route path="/driver/alert/:id" element={<Navigate to="/driver" replace />} />
       <Route
         path="/driver"
         element={
@@ -101,7 +137,26 @@ export default function App() {
         <Route path="/drivers" element={<DriversPage />} />
         <Route path="/reports" element={<ReportsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        {/* Owner pages from the team repo (Adithya, W3-W4) */}
+        <Route path="/owner/shipments" element={<Lazy what="shipments"><ShipmentsPage /></Lazy>} />
+        <Route path="/owner/shipments/new" element={<Lazy what="new shipment"><CreateShipmentPage /></Lazy>} />
+        <Route path="/owner/shipments/:id" element={<Lazy what="shipment"><ShipmentRoutingPage /></Lazy>} />
+        <Route path="/owner/predictive" element={<Lazy what="predictions"><PredictivePage /></Lazy>} />
+        <Route path="/owner/garages" element={<Lazy what="garages"><GaragesPage /></Lazy>} />
+        <Route path="/owner/settings" element={<Lazy what="settings"><SettingsPage /></Lazy>} />
       </Route>
+      {/* Team-repo owner addresses that the merged app serves from its own pages */}
+      <Route path="/owner" element={<Navigate to="/fleet" replace />} />
+      <Route path="/owner/dashboard" element={<Navigate to="/fleet" replace />} />
+      <Route path="/owner/map" element={<Navigate to="/fleet" replace />} />
+      <Route path="/owner/trucks" element={<Navigate to="/fleet" replace />} />
+      <Route path="/owner/trucks/:id" element={<RedirectParam to={(id) => `/trucks/${id}`} />} />
+      <Route path="/owner/alerts" element={<Navigate to="/alerts" replace />} />
+      <Route path="/owner/alerts/:id" element={<RedirectParam to={(id) => `/alerts/${id}`} />} />
+      <Route path="/owner/drivers" element={<Navigate to="/drivers" replace />} />
+      <Route path="/owner/drivers/:id" element={<Navigate to="/drivers" replace />} />
+      <Route path="/owner/reports" element={<Navigate to="/reports" replace />} />
+      <Route path="/owner/plan" element={<Navigate to="/plans" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

@@ -1,5 +1,5 @@
 # Publishes the frontend (landing page + dashboard on DEMO data) to GitHub Pages:
-#   https://rishi07-25.github.io/EcoStream/
+#   https://<account>.github.io/EcoStream/  (team repo: https://ecostream-dispatch.github.io/EcoStream/)
 #
 # Runs on every push to main that touches frontend/, or by hand (Actions tab -> Run workflow).
 # One-time setup on GitHub: Settings -> Pages -> Build and deployment -> Source: "GitHub Actions".
