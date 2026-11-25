@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { CORRIDOR, kmAlong, placeName, plannedRoute, pointAtKm, routeLengthKm, townsOnRoute } from '../src/lib/route'
+import { CORRIDOR, kmAlong, placeName, plannedRoute, pointAtKm, routeLengthKm, townsOnRoute } from '../src/portal/lib/route'
 
 const at = (name: string) => CORRIDOR.find((c) => c.name === name)!.at
 

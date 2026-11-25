@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { suggestTrucks, type Candidate } from '../src/lib/dispatch'
-import type { Driver, TruckSummary } from '../src/types'
+import { suggestTrucks, type Candidate } from '../src/portal/lib/dispatch'
+import type { Driver, TruckSummary } from '../src/portal/types'
 
 const truck = (id: string, axle: TruckSummary['axle_config']): TruckSummary => ({
   id, owner_id: 'o', reg_no: id, make: 'M', model: 'X', axle_config: axle, created_at: '', status: 'ok',

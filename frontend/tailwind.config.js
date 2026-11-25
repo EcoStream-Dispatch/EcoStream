@@ -28,7 +28,7 @@ export default {
           ok: '#5C9A35',
           warning: '#E0A100',
           critical: '#C62828',
-          offline: '#9AA5B1',
+          offline: '#9CA3AF',
         },
       },
       fontFamily: {

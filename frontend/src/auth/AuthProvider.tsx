@@ -1,133 +1,72 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, SUPABASE_CONFIGURED } from '../lib/supabase'
-import { isRole, type Role } from './roles'
 
 /*
- * Who is logged in, and as which role (owner / driver / shipper).
- *   const { role, signIn, signOut } = useAuth()
+ * Who is logged in. Wrap the app in <AuthProvider>, then in any component:
+ *   const { session, signIn, signOut } = useAuth()
  *
- * Real mode (Supabase keys set): email + password through Supabase Auth.
- *   The role comes from the user's row in public.profiles, which users can't change.
- * Demo mode (no Supabase keys): no real login. The login page just picks a role
- *   (remembered for this browser tab) so every portal can be shown with sample data.
+ * Supabase keeps the session in the browser and refreshes the token by itself.
  */
 interface AuthState {
-  /** false while we're still checking for a saved session and its role */
+  /** false while we're still checking for a saved session on page load */
   ready: boolean
   session: Session | null
-  /** the logged-in role, or null when logged out */
-  role: Role | null
-  /** true when there is no Supabase config: sample data, pretend login */
+  /** true when there is no Supabase config: the app shows mock data, no login needed */
   demoMode: boolean
-  /** Log in. `asRole` is what was picked on the login page. Returns an error message, or null. */
-  signIn: (email: string, password: string, asRole: Role) => Promise<string | null>
-  /** Demo mode only: "log in" as a role without a password. */
-  enterDemo: (role: Role) => void
+  signIn: (email: string, password: string) => Promise<string | null>
+  /** Phone login, step 1: send an SMS code. Needs an SMS provider set up in Supabase. */
+  sendOtp: (phone: string) => Promise<string | null>
+  /** Phone login, step 2: check the code. */
+  verifyOtp: (phone: string, code: string) => Promise<string | null>
   signOut: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthState | null>(null)
-const DEMO_ROLE_KEY = 'ecostream.demoRole'
-
-const ROLE_WORD: Record<Role, string> = { owner: 'Owner', driver: 'Driver', shipper: 'Shipper' }
-
-/** Read the user's role from public.profiles (RLS: only their own row is visible). */
-async function fetchRole(): Promise<Role | null> {
-  if (!supabase) return null
-  const { data, error } = await supabase.from('profiles').select('role').maybeSingle()
-  if (error || !data) return null
-  return isRole(data.role) ? data.role : null
-}
-
-function savedDemoRole(): Role | null {
-  try {
-    const v = sessionStorage.getItem(DEMO_ROLE_KEY)
-    return isRole(v) ? v : null
-  } catch {
-    return null
-  }
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
-  const [role, setRole] = useState<Role | null>(SUPABASE_CONFIGURED ? null : savedDemoRole)
   const [ready, setReady] = useState(!SUPABASE_CONFIGURED)
-  // True while signIn() is checking the role. The background listener must not
-  // set the role then, or a wrong-role login could open a portal for a moment.
-  const signingIn = useRef(false)
 
   useEffect(() => {
     if (!supabase) return
-    let cancelled = false
-    async function apply(s: Session | null) {
-      if (signingIn.current) return
-      const r = s ? await fetchRole() : null
-      if (cancelled || signingIn.current) return
-      setSession(s)
-      setRole(r)
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
       setReady(true)
-    }
-    supabase.auth.getSession().then(({ data }) => apply(data.session))
-    // Fires on login, logout and token refresh.
-    const { data } = supabase.auth.onAuthStateChange((event, s) => {
-      // Token refresh: same user, same role, no need to ask the database again.
-      if (event === 'TOKEN_REFRESHED') setSession(s)
-      // Run outside this callback (Supabase advises not to await inside it).
-      else setTimeout(() => apply(s), 0)
     })
-    return () => {
-      cancelled = true
-      data.subscription.unsubscribe()
-    }
+    // Fires on login, logout and token refresh.
+    const { data } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
+    return () => data.subscription.unsubscribe()
   }, [])
 
-  async function signIn(email: string, password: string, asRole: Role): Promise<string | null> {
+  /** Returns an error message, or null when login worked. */
+  async function signIn(email: string, password: string): Promise<string | null> {
     if (!supabase) return 'Login is not set up (no Supabase keys).'
-    signingIn.current = true
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        if (error.message.toLowerCase().includes('invalid login')) return 'Wrong email or password.'
-        return error.message
-      }
-      const actual = await fetchRole()
-      if (!actual) {
-        await signOut()
-        return 'This account has no role yet. Ask EcoStream to set it up.'
-      }
-      if (actual !== asRole) {
-        await signOut()
-        return `This is a ${ROLE_WORD[actual]} account. Choose "${ROLE_WORD[actual]}" above and log in again.`
-      }
-      setSession(data.session)
-      setRole(actual)
-      setReady(true)
-      return null
-    } finally {
-      signingIn.current = false
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (!error) return null
+    if (error.message.toLowerCase().includes('invalid login')) return 'Wrong email or password.'
+    return error.message
   }
 
-  function enterDemo(r: Role) {
-    setRole(r)
-    try {
-      sessionStorage.setItem(DEMO_ROLE_KEY, r)
-    } catch {
-      // storage blocked: the role still works until the page is reloaded
-    }
+  async function sendOtp(phone: string): Promise<string | null> {
+    if (!supabase) return 'Login is not set up (no Supabase keys).'
+    const { error } = await supabase.auth.signInWithOtp({ phone })
+    if (!error) return null
+    if (error.message.toLowerCase().includes('provider')) return 'Phone login is not switched on yet. Use email for now.'
+    return error.message
+  }
+
+  async function verifyOtp(phone: string, code: string): Promise<string | null> {
+    if (!supabase) return 'Login is not set up (no Supabase keys).'
+    const { error } = await supabase.auth.verifyOtp({ phone, token: code, type: 'sms' })
+    if (!error) return null
+    if (error.message.toLowerCase().includes('expired') || error.message.toLowerCase().includes('invalid'))
+      return 'Wrong or expired code. Tap "Resend OTP".'
+    return error.message
   }
 
   async function signOut() {
-    if (!supabase) {
-      setRole(null)
-      try {
-        sessionStorage.removeItem(DEMO_ROLE_KEY)
-      } catch {
-        // ignore
-      }
-      return
-    }
+    if (!supabase) return
     const { error } = await supabase.auth.signOut()
     if (error) {
       // No network (common on highways): Supabase keeps the session when the logout
@@ -135,13 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       Object.keys(localStorage)
         .filter((k) => k.startsWith('sb-') && k.endsWith('-auth-token'))
         .forEach((k) => localStorage.removeItem(k))
+      setSession(null)
     }
-    setSession(null)
-    setRole(null)
   }
 
   return (
-    <AuthContext.Provider value={{ ready, session, role, demoMode: !SUPABASE_CONFIGURED, signIn, enterDemo, signOut }}>
+    <AuthContext.Provider value={{ ready, session, demoMode: !SUPABASE_CONFIGURED, signIn, sendOtp, verifyOtp, signOut }}>
       {children}
     </AuthContext.Provider>
   )

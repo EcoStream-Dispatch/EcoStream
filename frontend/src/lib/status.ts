@@ -1,5 +1,5 @@
 import { AlertTriangle, CheckCircle2, OctagonAlert, WifiOff, type LucideIcon } from 'lucide-react'
-import type { AlertType, TruckSummary, TyreStatus } from '../types'
+import type { AlertType, TyreStatus } from '../types'
 import { kpaToPsi } from './units'
 
 /*
@@ -13,7 +13,7 @@ export const STATUS_STYLE: Record<
   ok: { label: 'OK', icon: CheckCircle2, hex: '#5C9A35', badge: 'bg-green-50 text-green-700 ring-green-500/30' },
   warning: { label: 'Warning', icon: AlertTriangle, hex: '#E0A100', badge: 'bg-amber-50 text-amber-800 ring-warning/40' },
   critical: { label: 'Critical', icon: OctagonAlert, hex: '#C62828', badge: 'bg-red-50 text-critical ring-critical/30' },
-  offline: { label: 'Offline', icon: WifiOff, hex: '#9AA5B1', badge: 'bg-gray-100 text-gray-600 ring-gray-300' },
+  offline: { label: 'Offline', icon: WifiOff, hex: '#9CA3AF', badge: 'bg-gray-100 text-gray-600 ring-gray-300' },
 }
 
 /** Short title for each alert type. */
@@ -45,13 +45,4 @@ export function formatAlertValue(type: AlertType, value: number): string {
     case 'sensor_offline':
       return `no data for ${value.toFixed(0)} min`
   }
-}
-
-/** A truck that hasn't sent anything for this long counts as Offline on the owner portal. */
-export const TRUCK_OFFLINE_AFTER_MIN = 30
-
-/** OK / Warning / Critical from open alerts, or Offline when the truck has gone quiet. */
-export function truckHealth(t: TruckSummary, now = Date.now()): TyreStatus {
-  if (!t.last_seen_at || now - new Date(t.last_seen_at).getTime() > TRUCK_OFFLINE_AFTER_MIN * 60_000) return 'offline'
-  return t.status
 }

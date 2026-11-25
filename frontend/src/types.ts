@@ -8,19 +8,12 @@
  * Units: pressures in kPa (gauge), temperatures in °C, times as ISO strings in UTC.
  */
 
-import type { AddOnId, PlanId } from './data/plans'
+import type { AddOn, ParamValue } from './lib/parameters'
 
 // ---------- Simple enums ----------
 
-/**
- * Wheel layout of a truck (see lib/tyreLayout.ts):
- *   6W  = 2 front + 4 rear (one dual axle)
- *   10W = 2 front + 8 rear (two dual axles)
- *   12W = 2 + 2 front (twin steer) + 8 rear (two dual axles)
- *   14W = 2 front + 12 rear (three dual axles)
- *   18W = tractor (2 front + 8 rear) + trailer (8 on two dual axles)
- */
-export type AxleConfig = '6W' | '10W' | '12W' | '14W' | '18W'
+/** Wheel layout of a truck. 6W = 2 front + 4 rear (one dual axle). 10W = 2 front + 8 rear (two dual axles). */
+export type AxleConfig = '6W' | '10W'
 
 export type AlertType =
   | 'low_pressure'
@@ -34,10 +27,26 @@ export type Severity = 'warning' | 'critical'
 /** Status shown for one tyre. */
 export type TyreStatus = 'ok' | 'warning' | 'critical' | 'offline'
 
+/**
+ * Subscription plan of a truck (see the Plans page). Not in the database yet:
+ * the mock data sets it; with the real API it is missing and the app treats it as Lite.
+ */
+export type Plan = 'lite' | 'pro' | 'fleet'
+
 /** Status shown for a whole truck (worst open alert). */
 export type TruckStatus = 'ok' | 'warning' | 'critical'
 
 // ---------- Database rows (spec section 3) ----------
+
+export interface FleetOwner {
+  id: string
+  name: string
+  phone: string | null
+  company: string | null
+  created_at: string
+  /** NEW, optional: GST number. Not in the database yet (mock only). */
+  gst_no?: string | null
+}
 
 export interface Truck {
   id: string
@@ -47,6 +56,21 @@ export interface Truck {
   model: string
   axle_config: AxleConfig
   created_at: string
+  /** NEW, optional: subscription plan. Missing = Lite. Needs a column (docs/FRONTEND_DATA_NEEDS.md). */
+  plan?: Plan
+  /** NEW, optional: what the truck usually carries, e.g. "Cement bags". Mock only for now. */
+  goods_type?: string | null
+  /** NEW, optional: document due dates for compliance reminders. Mock only for now. */
+  compliance?: ComplianceItem[]
+}
+
+/** Truck documents that must be renewed. */
+export type ComplianceKind = 'permit' | 'fitness' | 'puc' | 'insurance'
+
+export interface ComplianceItem {
+  kind: ComplianceKind
+  /** "YYYY-MM-DD" (India date) */
+  due_date: string
 }
 
 export interface Tyre {
@@ -85,8 +109,6 @@ export interface Alert {
   message: string
   created_at: string
   acknowledged_at: string | null
-  /** Set when the problem is fixed (stage W4). Resolving also acknowledges. */
-  resolved_at?: string | null
 }
 
 export interface Garage {
@@ -122,6 +144,20 @@ export interface TruckSummary extends Truck {
   lon: number | null
   open_alerts: number
   tyres: TyreWithStatus[]
+  /**
+   * NEW, optional: truck battery voltage (24 V system) from the device, and when it was read.
+   * Not sent by the API or the simulator yet, so the Truck page shows "No data yet".
+   */
+  battery_v?: number | null
+  battery_ts?: string | null
+  /**
+   * NEW, optional: latest value of every other data point the truck's plan includes
+   * (keys from lib/parameters.ts, e.g. "coolant_temperature"). Mock only for now:
+   * the engine (CAN) plug-in and add-on sensors aren't built, so the API doesn't send these.
+   */
+  params?: Record<string, ParamValue>
+  /** NEW, optional: add-on packs fitted to this truck (lib/parameters.ts). Mock only for now. */
+  add_ons?: AddOn[]
 }
 
 /** One item of GET /api/garages/nearest */
@@ -131,221 +167,38 @@ export interface NearbyGarage extends Garage {
   open_now: boolean
 }
 
-// ---------- Owner portal (website stage W3) ----------
-// No backend for these yet: they come from src/data/ownerMock.ts through src/services/api.ts.
-// Pages show a "Demo data" label wherever they use them.
+// ---------- Frontend-only for now (no table or endpoint yet) ----------
+// Every field below is optional or demo-only, so the real API keeps compiling.
+// The list of what the backend will need is in docs/FRONTEND_DATA_NEEDS.md.
 
-
-export type Availability = 'on_trip' | 'available' | 'off'
-
-export interface Driver {
-  id: string
-  name: string
-  phone: string
-  /** YYYY-MM-DD */
-  licence_expiry: string
-  /** 0-100, from driving data (harsh braking, speeding, idling) */
-  score: number
-  availability: Availability
-  truck_id: string | null
-}
-
-export interface Place {
-  name: string
-  city: string
-  address: string
-  contact: string
-  phone: string
-  lat: number
-  lon: number
-}
-
-export type ShipmentStatus = 'scheduled' | 'loading' | 'in_transit' | 'delivered' | 'delayed'
-
-export interface Shipment {
-  id: string
-  sender: Place
-  receiver: Place
-  goods: string
-  weight_t: number
-  truck_id: string | null
-  driver_id: string | null
-  status: ShipmentStatus
-  pickup_at: string
-  eta: string | null
-  distance_left_km: number | null
-}
-
-export interface TruckProfile {
-  truck_id: string
-  plan: PlanId
-  add_ons: AddOnId[]
-  driver_id: string | null
-  shipment_id: string | null
-  odometer_km: number
-  next_service: { date: string; km: number; what: string }
-}
-
-export type ParamStatus = 'ok' | 'warning' | 'critical'
-
-/** One live value on a Truck page card (keys from src/data/plans.ts). */
-export interface ParamValue {
-  key: string
-  value: string
-  detail?: string
-  status: ParamStatus
-  /** e.g. "80-95 °C" */
-  normal?: string
-  /** last 24 h, for the sparkline */
-  series?: number[]
-}
-
-export interface TyreExtra {
-  position: string
-  brand: string
-  tread_mm: number
-  sensor_battery_pct: number
-  signal: 'good' | 'weak'
-  fitted_on: string
-  km_run: number
-  retreads: number
-  cost_per_km: number
-}
-
-export type Risk = 'low' | 'medium' | 'high'
-
-export interface Prediction {
-  id: string
-  truck_id: string
-  component: 'Tyres' | 'Engine' | 'Brakes' | 'Power' | 'Cargo'
-  issue: string
-  risk: Risk
-  /** "Unsafe in ~6 h", "Service due in 9 days / 1,800 km" */
-  window: string
-  confidence_pct: number
-  action: string
-  cost_if_ignored: number
-  cost_now: number
-  /** Show "Book garage" */
-  needs_garage: boolean
-}
-
-export interface MaintenanceItem {
-  date: string
-  title: string
-  where: string
-  cost: number | null
-}
-
-export interface ComplianceDoc {
-  name: 'Permit' | 'Fitness certificate' | 'PUC' | 'Insurance' | 'Road tax'
-  due: string
-}
-
-/** Everything the Truck page needs on top of TruckSummary. */
-export interface TruckDetails {
-  profile: TruckProfile
-  driver: Driver | null
-  shipment: Shipment | null
-  params: ParamValue[]
-  tyres: TyreExtra[]
-  predictions: Prediction[]
-  service_history: MaintenanceItem[]
-  upcoming: MaintenanceItem[]
-  documents: ComplianceDoc[]
-}
-
-export interface MapPath {
-  name: string
-  points: [number, number][]
-}
-
-/** Extra map layers on the Live Map (sample data). */
-export interface MapLayers {
-  dead_zones: MapPath[]
-  ghats: MapPath[]
-  bad_roads: MapPath[]
-}
-
-// ---------- Owner portal part 2 (website stage W4) ----------
-
+/**
+ * A garage slot booked from an alert. Demo only: there is no bookings table or
+ * endpoint yet, so in demo mode it lives in memory (src/data/mock.ts).
+ */
 export interface Booking {
   id: string
+  alert_id: string
   truck_id: string
-  alert_id: string | null
-  garage_id: string
-  garage_name: string
-  garage_phone: string
-  /** ISO time of the slot */
-  slot: string
-  what: string
-  status: 'confirmed' | 'done' | 'cancelled'
+  tyre_id: string
+  garage: NearbyGarage
   created_at: string
 }
 
-export interface ShipmentEvent {
-  ts: string
-  kind: 'created' | 'picked_up' | 'checkpoint' | 'alert' | 'delivered'
-  text: string
-}
+/** Driver availability on the Drivers page. */
+export type DriverAvailability = 'available' | 'on_duty' | 'off_duty'
 
-export interface NewShipment {
-  sender: Place
-  receiver: Place
-  goods: string
-  weight_t: number
-  cold_chain: boolean
-  pickup_at: string
-  truck_id: string
-  driver_id: string | null
-  notify_shipper: boolean
-}
-
-export interface TeamUser {
+/**
+ * A driver working for the owner. NEW: there is no drivers table yet, so this is
+ * mock-only (docs/FRONTEND_DATA_NEEDS.md).
+ */
+export interface Driver {
   id: string
+  owner_id: string
   name: string
-  email: string
-  role: 'owner' | 'manager' | 'viewer'
-}
-
-export interface AlertThresholds {
-  low_pressure_pct: number
-  critical_pressure_pct: number
-  max_temp_c: number
-  leak_warning_psi_per_hour: number
-}
-
-export interface NotificationSettings {
-  whatsapp: boolean
-  sms: boolean
-  email: boolean
   phone: string
-  email_address: string
+  availability: DriverAvailability
+  /** Truck the driver is assigned to, or null */
+  truck_id: string | null
+  /** 1-5 stars. Comes with the Pro plan's driver ratings; null until then. */
+  rating: number | null
 }
-
-export interface MonthReport {
-  month: string
-  saved_rupees: number
-  breakdowns_avoided: number
-  alerts_acted_on: number
-  fuel_km_per_l: number
-  idle_min_per_day: number
-}
-
-// ---------- Shipper portal (website stage W6) ----------
-
-export interface ShipmentRequest {
-  id: string
-  pickup_city: string
-  pickup_address: string
-  drop_city: string
-  drop_address: string
-  goods: string
-  weight_t: number
-  date: string
-  status: 'waiting' | 'accepted'
-  created_at: string
-}
-
-/** What a shipper is shown about the truck: plain words, no technical alert details. */
-export type TruckCondition = 'good' | 'minor' | 'problem' | 'no_signal'

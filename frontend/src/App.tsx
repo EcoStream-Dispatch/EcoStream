@@ -1,138 +1,162 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Outlet, Route, Routes, useParams } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
-import PlansPage from './pages/PlansPage'
-import GaragesJoinPage from './pages/GaragesJoinPage'
-import AboutPage from './pages/AboutPage'
 import AppLayout from './components/AppLayout'
-import RequireRole from './auth/RequireRole'
-import ShipperLayout from './pages/shipper/ShipperLayout'
-import MyShipmentsPage from './pages/shipper/MyShipmentsPage'
-import RequestShipmentPage from './pages/shipper/RequestShipmentPage'
-import TrackShipmentPage from './pages/shipper/TrackShipmentPage'
-import DeliveriesPage, { InvoicePage } from './pages/shipper/DeliveriesPage'
-import DriverLayout, { DriverDataProvider } from './pages/driver/DriverLayout'
-import MyTripPage from './pages/driver/MyTripPage'
-import TruckCockpitPage from './pages/driver/TruckCockpitPage'
-import DriverAlertPage from './pages/driver/DriverAlertPage'
-import SosPage from './pages/driver/SosPage'
-import DriverHistoryPage from './pages/driver/DriverHistoryPage'
+import RequireAuth from './auth/RequireAuth'
+import FleetPage from './pages/FleetPage'
 import AlertsPage from './pages/AlertsPage'
-import DashboardPage from './pages/owner/DashboardPage'
-import LiveMapPage from './pages/owner/LiveMapPage'
-import TrucksPage from './pages/owner/TrucksPage'
-import PredictivePage from './pages/owner/PredictivePage'
-import ShipmentsPage from './pages/owner/ShipmentsPage'
-import CreateShipmentPage from './pages/owner/CreateShipmentPage'
-import ShipmentRoutingPage from './pages/owner/ShipmentRoutingPage'
-import DriversPage, { DriverProfilePage } from './pages/owner/DriversPage'
-import GaragesPage from './pages/owner/GaragesPage'
-import PlanBillingPage from './pages/owner/PlanBillingPage'
-import SettingsPage from './pages/owner/SettingsPage'
-import AlertDetailPage from './pages/owner/AlertDetailPage'
+import AlertDetailPage from './pages/AlertDetailPage'
+import BookingPage from './pages/BookingPage'
+import PlansPage from './pages/PlansPage'
+import ProfilePage from './pages/ProfilePage'
+import DriversPage from './pages/DriversPage'
+import ReportsPage from './pages/ReportsPage'
 import { Loading } from './components/PageState'
+import PhotoHero from './landing3d/PhotoHero'
+import { hasWebGL } from './landing3d/store'
+import {
+  AboutPage,
+  CreateShipmentPage,
+  DriverHistoryPage,
+  DriverLayout,
+  DriverPortal,
+  GaragesJoinPage,
+  GaragesPage,
+  Lazy,
+  MyTripPage,
+  PredictivePage,
+  RedirectParam,
+  SettingsPage,
+  ShipmentRoutingPage,
+  ShipmentsPage,
+  SosPage,
+} from './portal/routes'
 
 // The Truck page pulls in the chart library (recharts), which is big.
 // Loading it only when needed keeps the first page load fast on phones.
-const TruckDetailPage = lazy(() => import('./pages/owner/truck/TruckDetailPage'))
-const ReportsPage = lazy(() => import('./pages/owner/ReportsPage'))
+const TruckPage = lazy(() => import('./pages/TruckPage'))
+const DriverPage = lazy(() => import('./pages/DriverPage'))
+const ShipperPage = lazy(() => import('./pages/ShipperPage'))
+// The 3D landing page (three.js) is only loaded on "/", so the app itself stays light.
+const Landing3D = lazy(() => import('./landing3d/Landing3D'))
+// The photo-real landing page (no three.js): the default.
+const PhotoStory = lazy(() => import('./landing3d/PhotoStory'))
 
-/** Old links from before stage W3 (/trucks/:id) go to the new owner portal address. */
-function OldTruckLink() {
-  const { id = '' } = useParams()
-  return <Navigate to={`/owner/trucks/${id}`} replace />
+/**
+ * Photo-real landing by default. "?3d" shows the 3D digital-twin tour, "?static" the calm
+ * version (also used when the visitor has asked for less motion).
+ */
+function HomeRoute() {
+  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
+  const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (reduced || params.has('static')) return <LandingPage />
+  if (params.has('3d') && hasWebGL()) {
+    return (
+      <Suspense fallback={<PhotoHero loading3d />}>
+        <Landing3D />
+      </Suspense>
+    )
+  }
+  return (
+    <Suspense fallback={<PhotoHero />}>
+      <PhotoStory />
+    </Suspense>
+  )
 }
 
 /**
  * All routes live here.
- * Public: home, plans, for garages, about/contact, login.
- * Each portal is guarded by RequireRole: logged out -> /login, wrong role -> own portal.
- * Owner pages live under /owner/... inside AppLayout (sidebar, top bar, live connection).
+ * Public: landing + login. Owner pages need a login (RequireAuth; skipped in demo mode)
+ * and sit inside AppLayout (top bar, tab bar, live connection).
  */
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/plans" element={<PlansPage />} />
-      <Route path="/garages/join" element={<GaragesJoinPage />} />
-      <Route path="/about" element={<AboutPage />} />
+      <Route path="/" element={<HomeRoute />} />
       <Route path="/login" element={<LoginPage />} />
+      {/* Public pages from the team repo (Adithya, W1) */}
+      <Route path="/about" element={<Lazy what="page"><AboutPage /></Lazy>} />
+      <Route path="/garages/join" element={<Lazy what="page"><GaragesJoinPage /></Lazy>} />
+      {/* Driver pages from the team repo (Adithya, W5): my trip, SOS, my trips */}
       <Route
         element={
-          <RequireRole role="owner">
-            <AppLayout />
-          </RequireRole>
+          <RequireAuth>
+            <DriverPortal />
+          </RequireAuth>
         }
       >
-        <Route path="/owner" element={<Navigate to="/owner/dashboard" replace />} />
-        <Route path="/owner/dashboard" element={<DashboardPage />} />
-        <Route path="/owner/map" element={<LiveMapPage />} />
-        <Route path="/owner/trucks" element={<TrucksPage />} />
+        <Route element={<Lazy what="driver"><DriverLayout /></Lazy>}>
+          <Route path="/driver/trip" element={<Lazy what="your trip"><MyTripPage /></Lazy>} />
+          <Route path="/driver/sos" element={<Lazy what="SOS"><SosPage /></Lazy>} />
+          <Route path="/driver/history" element={<Lazy what="your trips"><DriverHistoryPage /></Lazy>} />
+        </Route>
+      </Route>
+      <Route path="/driver/truck" element={<Navigate to="/driver" replace />} />
+      <Route path="/driver/alert/:id" element={<Navigate to="/driver" replace />} />
+      <Route
+        path="/driver"
+        element={
+          <RequireAuth>
+            <Suspense fallback={<Loading what="cockpit" />}>
+              <DriverPage />
+            </Suspense>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/shipper"
+        element={
+          <RequireAuth>
+            <Suspense fallback={<Loading what="shipment" />}>
+              <ShipperPage />
+            </Suspense>
+          </RequireAuth>
+        }
+      />
+      <Route
+        element={
+          <RequireAuth>
+            <AppLayout />
+          </RequireAuth>
+        }
+      >
+        <Route path="/fleet" element={<FleetPage />} />
         <Route
-          path="/owner/trucks/:id"
+          path="/trucks/:id"
           element={
             <Suspense fallback={<Loading what="truck" />}>
-              <TruckDetailPage />
+              <TruckPage />
             </Suspense>
           }
         />
-        <Route path="/owner/alerts" element={<AlertsPage />} />
-        <Route path="/owner/alerts/:id" element={<AlertDetailPage />} />
-        <Route path="/owner/predictive" element={<PredictivePage />} />
-        <Route path="/owner/shipments" element={<ShipmentsPage />} />
-        <Route path="/owner/shipments/new" element={<CreateShipmentPage />} />
-        <Route path="/owner/shipments/:id" element={<ShipmentRoutingPage />} />
-        <Route path="/owner/drivers" element={<DriversPage />} />
-        <Route path="/owner/drivers/:id" element={<DriverProfilePage />} />
-        <Route path="/owner/garages" element={<GaragesPage />} />
-        <Route
-          path="/owner/reports"
-          element={
-            <Suspense fallback={<Loading what="reports" />}>
-              <ReportsPage />
-            </Suspense>
-          }
-        />
-        <Route path="/owner/plan" element={<PlanBillingPage />} />
-        <Route path="/owner/settings" element={<SettingsPage />} />
+        <Route path="/alerts" element={<AlertsPage />} />
+        <Route path="/alerts/:id" element={<AlertDetailPage />} />
+        <Route path="/bookings/:id" element={<BookingPage />} />
+        <Route path="/plans" element={<PlansPage />} />
+        <Route path="/drivers" element={<DriversPage />} />
+        <Route path="/reports" element={<ReportsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        {/* Owner pages from the team repo (Adithya, W3-W4) */}
+        <Route path="/owner/shipments" element={<Lazy what="shipments"><ShipmentsPage /></Lazy>} />
+        <Route path="/owner/shipments/new" element={<Lazy what="new shipment"><CreateShipmentPage /></Lazy>} />
+        <Route path="/owner/shipments/:id" element={<Lazy what="shipment"><ShipmentRoutingPage /></Lazy>} />
+        <Route path="/owner/predictive" element={<Lazy what="predictions"><PredictivePage /></Lazy>} />
+        <Route path="/owner/garages" element={<Lazy what="garages"><GaragesPage /></Lazy>} />
+        <Route path="/owner/settings" element={<Lazy what="settings"><SettingsPage /></Lazy>} />
       </Route>
-      {/* Old addresses from before stage W3 */}
-      <Route path="/fleet" element={<Navigate to="/owner/dashboard" replace />} />
-      <Route path="/alerts" element={<Navigate to="/owner/alerts" replace />} />
-      <Route path="/trucks/:id" element={<OldTruckLink />} />
-      {/* Driver portal (stage W5) */}
-      <Route
-        element={
-          <RequireRole role="driver">
-            <DriverDataProvider>
-              <Outlet />
-            </DriverDataProvider>
-          </RequireRole>
-        }
-      >
-        <Route element={<DriverLayout />}>
-          <Route path="/driver" element={<MyTripPage />} />
-          <Route path="/driver/truck" element={<TruckCockpitPage />} />
-          <Route path="/driver/sos" element={<SosPage />} />
-          <Route path="/driver/history" element={<DriverHistoryPage />} />
-        </Route>
-        <Route path="/driver/alert/:id" element={<DriverAlertPage />} />
-      </Route>
-      {/* Shipper portal (stage W6) */}
-      <Route
-        element={
-          <RequireRole role="shipper">
-            <ShipperLayout />
-          </RequireRole>
-        }
-      >
-        <Route path="/shipper" element={<MyShipmentsPage />} />
-        <Route path="/shipper/request" element={<RequestShipmentPage />} />
-        <Route path="/shipper/track/:id" element={<TrackShipmentPage />} />
-        <Route path="/shipper/deliveries" element={<DeliveriesPage />} />
-        <Route path="/shipper/invoices/:id" element={<InvoicePage />} />
-      </Route>
+      {/* Team-repo owner addresses that the merged app serves from its own pages */}
+      <Route path="/owner" element={<Navigate to="/fleet" replace />} />
+      <Route path="/owner/dashboard" element={<Navigate to="/fleet" replace />} />
+      <Route path="/owner/map" element={<Navigate to="/fleet" replace />} />
+      <Route path="/owner/trucks" element={<Navigate to="/fleet" replace />} />
+      <Route path="/owner/trucks/:id" element={<RedirectParam to={(id) => `/trucks/${id}`} />} />
+      <Route path="/owner/alerts" element={<Navigate to="/alerts" replace />} />
+      <Route path="/owner/alerts/:id" element={<RedirectParam to={(id) => `/alerts/${id}`} />} />
+      <Route path="/owner/drivers" element={<Navigate to="/drivers" replace />} />
+      <Route path="/owner/drivers/:id" element={<Navigate to="/drivers" replace />} />
+      <Route path="/owner/reports" element={<Navigate to="/reports" replace />} />
+      <Route path="/owner/plan" element={<Navigate to="/plans" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

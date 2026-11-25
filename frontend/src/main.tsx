@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './auth/AuthProvider'
-import { LanguageProvider } from './i18n/LanguageProvider'
+import { LanguageProvider } from './lib/i18n'
 import './styles/index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -18,3 +18,12 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </BrowserRouter>
   </React.StrictMode>,
 )
+
+// Installable app: register the service worker in production builds only (dev keeps hot reload simple).
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL }).catch(() => {
+      /* not critical: the site still works without it */
+    })
+  })
+}

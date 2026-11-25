@@ -1,11 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { PARAMS, PLANS, availability, monthlyPrice } from '../src/data/plans'
-import { AXLE_LAYOUTS, positionName, positionsFor } from '../src/lib/tyreLayout'
-import { truckHealth } from '../src/lib/status'
-import { leakRate } from '../src/lib/leak'
-import { psiToKpa } from '../src/lib/units'
-import type { Reading, TruckSummary } from '../src/types'
+import { PARAMS, PLANS, availability, monthlyPrice } from '../src/portal/data/plans'
+import { AXLE_LAYOUTS, positionName, positionsFor } from '../src/portal/lib/tyreLayout'
+import { truckHealth } from '../src/portal/lib/status'
+import { leakRate } from '../src/portal/lib/leak'
+import { psiToKpa } from '../src/portal/lib/units'
+import type { Reading, TruckSummary } from '../src/portal/types'
 
 test('prices from the spec: Lite 299 (list 399), Pro 499, Fleet 899; annual -10%', () => {
   const [lite, pro, fleet] = PLANS

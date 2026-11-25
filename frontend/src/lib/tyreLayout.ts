@@ -8,41 +8,25 @@ import type { AxleConfig } from '../types'
  *   right: inner -> outer
  *
  * Position names:
- *   F = front, R = rear, T = trailer, L/R = left/right, O/I = outer/inner of a dual pair.
+ *   F = front, R = rear, L/R = left/right, O/I = outer/inner of a dual pair.
  *   6W uses the names from the spec: FL, FR, RL-O, RL-I, RR-I, RR-O.
- *   More than one axle of a kind: numbered, e.g. F1L, F2L (twin steer), R1L-O ... R3R-O, T1L-O.
- *
- * Must match what the sensors are registered as in the `tyres` table.
+ *   10W has two rear axles, so they are numbered: R1L-O ... R2R-O.
  */
-export type AxleGroup = 'front' | 'rear' | 'trailer'
-
 export interface Axle {
-  group: AxleGroup
   left: string[]
   right: string[]
 }
 
-const single = (group: AxleGroup, name: string): Axle => ({ group, left: [`${name}L`], right: [`${name}R`] })
-const dual = (group: AxleGroup, name: string): Axle => ({
-  group,
-  left: [`${name}L-O`, `${name}L-I`],
-  right: [`${name}R-I`, `${name}R-O`],
-})
-
 export const AXLE_LAYOUTS: Record<AxleConfig, Axle[]> = {
-  '6W': [single('front', 'F'), dual('rear', 'R')],
-  '10W': [single('front', 'F'), dual('rear', 'R1'), dual('rear', 'R2')],
-  '12W': [single('front', 'F1'), single('front', 'F2'), dual('rear', 'R1'), dual('rear', 'R2')],
-  '14W': [single('front', 'F'), dual('rear', 'R1'), dual('rear', 'R2'), dual('rear', 'R3')],
-  '18W': [single('front', 'F'), dual('rear', 'R1'), dual('rear', 'R2'), dual('trailer', 'T1'), dual('trailer', 'T2')],
-}
-
-export const AXLE_CONFIG_LABEL: Record<AxleConfig, string> = {
-  '6W': '6-wheel',
-  '10W': '10-wheel',
-  '12W': '12-wheel (twin steer)',
-  '14W': '14-wheel',
-  '18W': '18-wheel (tractor-trailer)',
+  '6W': [
+    { left: ['FL'], right: ['FR'] },
+    { left: ['RL-O', 'RL-I'], right: ['RR-I', 'RR-O'] },
+  ],
+  '10W': [
+    { left: ['FL'], right: ['FR'] },
+    { left: ['R1L-O', 'R1L-I'], right: ['R1R-I', 'R1R-O'] },
+    { left: ['R2L-O', 'R2L-I'], right: ['R2R-I', 'R2R-O'] },
+  ],
 }
 
 /** All positions for a layout, in display order. */
@@ -50,14 +34,13 @@ export function positionsFor(config: AxleConfig): string[] {
   return AXLE_LAYOUTS[config].flatMap((a) => [...a.left, ...a.right])
 }
 
-/** Human name for a position: "RL-O" -> "Rear left, outer", "T2R-I" -> "Trailer axle 2 right, inner" */
+/** Human name for a position: "RL-O" -> "Rear left, outer" */
 export function positionName(pos: string): string {
-  const m = pos.match(/^([FRT])(\d?)(L|R)(?:-(O|I))?$/)
+  const m = pos.match(/^(F|R\d?)(L|R)(?:-(O|I))?$/)
   if (!m) return pos
-  const [, kind, num, side, dualPos] = m
-  const base = kind === 'F' ? 'Front' : kind === 'R' ? 'Rear' : 'Trailer'
-  const axleName = num ? `${base} axle ${num}` : base
+  const [, axle, side, dual] = m
+  const axleName = axle === 'F' ? 'Front' : axle === 'R' ? 'Rear' : `Rear axle ${axle.slice(1)}`
   const sideName = side === 'L' ? 'left' : 'right'
-  const dualName = dualPos === 'O' ? ', outer' : dualPos === 'I' ? ', inner' : ''
+  const dualName = dual === 'O' ? ', outer' : dual === 'I' ? ', inner' : ''
   return `${axleName} ${sideName}${dualName}`
 }

@@ -21,7 +21,7 @@
   --status-ok: var(--green-500);
   --status-warning: var(--warning);
   --status-critical: var(--critical);
-  --status-offline: #9aa5b1;
+  --status-offline: #9ca3af;
 }
 
 body {
@@ -30,4 +30,76 @@ body {
 
 h1, h2, h3 {
   @apply font-heading;
+}
+
+/* ---------- Photo hero (src/landing3d/PhotoHero.tsx) ---------- */
+.photo-parallax {
+  transform: translate3d(calc(var(--px, 0) * -10px), calc(var(--py, 0) * -6px), 0);
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.photo-kenburns {
+  transform-origin: 48% 62%;
+  animation: photo-kenburns 26s ease-in-out infinite alternate;
+}
+@keyframes photo-kenburns {
+  from { transform: scale(1.02); }
+  to { transform: scale(1.08); }
+}
+.photo-scan {
+  left: -40%;
+  background: linear-gradient(90deg, rgba(140, 193, 82, 0) 0%, rgba(140, 193, 82, 0.28) 70%, rgba(214, 245, 170, 0.75) 96%, rgba(140, 193, 82, 0) 100%);
+  mix-blend-mode: screen;
+  animation: photo-scan 1.5s cubic-bezier(0.45, 0, 0.25, 1) 0.5s both;
+}
+@keyframes photo-scan {
+  from { left: -40%; opacity: 1; }
+  85% { opacity: 1; }
+  to { left: 110%; opacity: 0; }
+}
+.photo-point {
+  animation: photo-pop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes photo-pop {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.photo-rise {
+  animation: photo-rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both;
+}
+.photo-rise-2 {
+  animation-delay: 0.35s;
+}
+@keyframes photo-rise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-kenburns, .photo-scan, .photo-point, .photo-rise { animation: none; }
+  .photo-scan { display: none; }
+  .photo-parallax { transform: none; }
+}
+.photo-fade {
+  animation: photo-fade 0.6s cubic-bezier(0.2, 1.2, 0.4, 1) both;
+}
+@keyframes photo-fade {
+  from { opacity: 0; transform: translateX(-8px) scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-fade { animation: none; }
+}
+
+/* Photo story: endless scan bar over the truck */
+.ps-scan {
+  left: -40%;
+  background: linear-gradient(90deg, rgba(140, 193, 82, 0) 0%, rgba(140, 193, 82, 0.22) 70%, rgba(214, 245, 170, 0.7) 96%, rgba(140, 193, 82, 0) 100%);
+  mix-blend-mode: screen;
+  animation: ps-scan 2.6s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+@keyframes ps-scan {
+  from { left: -40%; }
+  to { left: 110%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ps-scan { animation: none; display: none; }
 }

@@ -1,175 +1,301 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { Building2, Info, LogIn, Truck, UserRound, type LucideIcon } from 'lucide-react'
+import { ArrowRight, BadgeCheck, KeyRound, Lock, Mail, Package, Repeat, Truck, UserRound, type LucideIcon } from 'lucide-react'
 import Header from '../components/Header'
+import LanguageSwitch from '../components/LanguageSwitch'
+import Wordmark from '../components/Wordmark'
 import { useAuth } from '../auth/AuthProvider'
-import { PORTAL_HOME, ROLES, isRole, type Role } from '../auth/roles'
-import { useLanguage } from '../i18n/LanguageProvider'
-import type { StringKey } from '../i18n/strings'
-import { primaryButton } from '../components/Form'
+import { useLang } from '../lib/i18n'
+import { asset } from '../lib/asset'
 
 /**
- * One login page for everyone (docs/WEBSITE_SPEC.md public page 5, stage W2).
- * Pick a role -> email + password -> land on that role's portal.
+ * Login - Stitch "Direction A (Sunlight Clean)": light centred card, language switch,
+ * role tabs (Owner / Driver / Shipper), email + password or phone + OTP.
  *
- * Why not phone + OTP yet: Supabase can only send OTP text messages once an SMS
- * provider (e.g. Twilio, MessageBird, Vonage, Textlocal) is connected, and that is
- * a paid account we don't have yet. Email + password works on the free plan.
- *
- * Demo mode (no Supabase keys): no password, the button opens that role's portal with sample data.
+ * Email + password is what Supabase is set up for (spec section 6.1).
+ * Phone + OTP works once an SMS provider is switched on in Supabase.
+ * Shipper accounts are Phase 3: the Shipper tab opens a preview of the shipper view.
  */
+type Role = 'owner' | 'driver' | 'shipper'
+type Mode = 'email' | 'phone'
 
-const ROLE_CARD: Record<Role, { icon: LucideIcon; label: StringKey; hint: StringKey }> = {
-  owner: { icon: Truck, label: 'role.owner', hint: 'role.ownerHint' },
-  driver: { icon: UserRound, label: 'role.driver', hint: 'role.driverHint' },
-  shipper: { icon: Building2, label: 'role.shipper', hint: 'role.shipperHint' },
-}
+const ROLES: { id: Role; icon: LucideIcon; key: 'role.owner' | 'role.driver' | 'role.shipper'; enabled: boolean }[] = [
+  { id: 'owner', icon: Truck, key: 'role.owner', enabled: true },
+  { id: 'driver', icon: UserRound, key: 'role.driver', enabled: true },
+  { id: 'shipper', icon: Package, key: 'role.shipper', enabled: true },
+]
+
+const HOME: Record<Role, string> = { owner: '/fleet', driver: '/driver', shipper: '/shipper' }
 
 export default function LoginPage() {
-  const { role: currentRole, ready, demoMode, signIn, enterDemo } = useAuth()
-  const { t } = useLanguage()
+  const { session, demoMode, signIn, sendOtp, verifyOtp } = useAuth()
+  const { t } = useLang()
   const navigate = useNavigate()
-  const state = (useLocation().state as { from?: string; role?: string } | null) ?? {}
+  const location = useLocation()
 
-  // Start with the role of the page the visitor tried to open, else Owner.
-  const [role, setRole] = useState<Role>(isRole(state.role) ? state.role : 'owner')
+  const [role, setRole] = useState<Role>('owner')
+  const [mode, setMode] = useState<Mode>('email')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [phone, setPhone] = useState('')
+  const [code, setCode] = useState('')
+  const [otpSent, setOtpSent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Only go back to the page they came from if it belongs to the role they logged in as.
-  const goTo = (r: Role) => (state.from && state.role === r ? state.from : PORTAL_HOME[r])
+  const from = (location.state as { from?: string } | null)?.from
+  const goTo = from ?? HOME[role]
+  if (session) return <Navigate to={goTo} replace />
 
-  if (ready && currentRole && !busy) return <Navigate to={goTo(currentRole)} replace />
+  const fullPhone = `+91${phone.replace(/\D/g, '')}`
+  const phoneOk = /^\d{10}$/.test(phone.replace(/\D/g, ''))
 
-  async function onSubmit(e: FormEvent) {
-    e.preventDefault()
-    if (demoMode) {
-      enterDemo(role)
-      navigate(goTo(role), { replace: true })
-      return
-    }
+  async function run(action: () => Promise<string | null>, onOk: () => void) {
     setBusy(true)
     setError(null)
-    const err = await signIn(email.trim(), password, role)
+    const err = await action()
     setBusy(false)
     if (err) setError(err)
-    else navigate(goTo(role), { replace: true })
+    else onOk()
   }
 
-  return (
-    <div className="flex min-h-screen flex-col bg-white">
-      <Header />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
-        <h1 className="text-center text-2xl font-bold">{t('login.title')}</h1>
+  function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (mode === 'email') {
+      run(() => signIn(email.trim(), password), () => navigate(goTo, { replace: true }))
+    } else if (!otpSent) {
+      run(() => sendOtp(fullPhone), () => setOtpSent(true))
+    } else {
+      run(() => verifyOtp(fullPhone, code.trim()), () => navigate(goTo, { replace: true }))
+    }
+  }
 
-        <form onSubmit={onSubmit} className="mt-6 space-y-5" noValidate>
-          {/* Role selector */}
-          <fieldset>
-            <legend className="text-sm font-semibold">{t('login.chooseRole')}</legend>
-            <div className="mt-2 grid gap-2">
-              {ROLES.map((r) => {
-                const { icon: Icon, label, hint } = ROLE_CARD[r]
-                const selected = role === r
-                return (
-                  <label
-                    key={r}
-                    className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3 transition ${
-                      selected ? 'border-green-700 bg-green-50' : 'border-gray-200 hover:border-green-300'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="role"
-                      value={r}
-                      checked={selected}
-                      onChange={() => {
-                        setRole(r)
-                        setError(null)
-                      }}
-                      className="h-5 w-5 shrink-0 accent-green-700"
-                    />
-                    <span
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                        selected ? 'bg-green-700 text-white' : 'bg-navy-900 text-white'
-                      }`}
-                    >
-                      <Icon size={20} aria-hidden />
-                    </span>
-                    <span>
-                      <span className="block font-semibold">{t(label)}</span>
-                      <span className="block text-xs text-navy-700">{t(hint)}</span>
-                    </span>
-                  </label>
-                )
-              })}
-            </div>
-          </fieldset>
+  const canSubmit =
+    !busy && (mode === 'email' ? Boolean(email && password) : otpSent ? /^\d{6}$/.test(code) : phoneOk)
+
+  return (
+    <div className="flex min-h-screen flex-col bg-green-50">
+      <Header />
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center px-4 py-6 md:py-10">
+        <div className="mb-6 flex w-full justify-end">
+          <LanguageSwitch />
+        </div>
+
+        <div className="flex w-full max-w-md flex-col gap-6 rounded-xl bg-white p-6 shadow-xl ring-1 ring-navy-900/5 md:p-10">
+          {/* Logo + brand */}
+          <div className="flex flex-col items-center gap-2 text-center">
+            <img src={asset('logo-mark.png')} alt="" className="h-16 w-16 object-contain" />
+            <h1 className="text-3xl">
+              <Wordmark />
+            </h1>
+            <p className="font-heading text-xs font-bold tracking-[0.2em] text-green-700">PREDICT · PROTECT · PERFORM</p>
+            <p className="text-sm text-navy-700">{t('login.welcome')}</p>
+          </div>
+
+          {/* Role tabs */}
+          <div role="tablist" aria-label={t('login.role')} className="grid grid-cols-3 gap-1 rounded-xl bg-green-50 p-1">
+            {ROLES.map(({ id, icon: Icon, key, enabled }) => {
+              const active = role === id
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  disabled={!enabled}
+                  onClick={() => setRole(id)}
+                  title={enabled ? undefined : t('role.soon')}
+                  className={`flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-lg px-1 py-2 text-center text-xs font-semibold leading-tight transition ${
+                    active
+                      ? 'bg-white text-green-700 shadow-sm ring-1 ring-green-500/30'
+                      : enabled
+                        ? 'text-navy-700 hover:bg-white/70'
+                        : 'cursor-not-allowed text-navy-700/50'
+                  }`}
+                >
+                  <Icon size={20} aria-hidden />
+                  <span>{t(key)}</span>
+                  {!enabled && <span className="text-[10px] font-medium">{t('role.soon')}</span>}
+                  {id === 'shipper' && <span className="text-[10px] font-medium text-navy-700/70">{t('role.preview')}</span>}
+                </button>
+              )
+            })}
+          </div>
 
           {demoMode ? (
-            <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900 ring-1 ring-warning/40">
-              <p className="flex items-start gap-2">
-                <Info size={16} className="mt-0.5 shrink-0" aria-hidden />
-                {t('login.demoNote')}
-              </p>
+            <div className="text-center">
+              <p className="text-sm text-navy-700">{t('login.demoNote')}</p>
+              <Link
+                to={HOME[role]}
+                className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-green-700 font-semibold text-white transition hover:bg-green-500"
+              >
+                {role === 'driver' ? t('login.driverDemo') : role === 'shipper' ? t('login.shipperDemo') : t('login.openDemo')} <ArrowRight size={18} aria-hidden />
+              </Link>
             </div>
           ) : (
-            <>
-              <label className="block">
-                <span className="text-sm font-semibold">{t('login.email')}</span>
-                <input
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-300"
-                />
-              </label>
-              <label className="block">
-                <span className="text-sm font-semibold">{t('login.password')}</span>
-                <input
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2.5 text-base focus:border-green-700 focus:outline-none focus:ring-2 focus:ring-green-300"
-                />
-              </label>
-              <p className="text-xs text-navy-700">{t('login.phoneSoon')}</p>
-            </>
+            <form onSubmit={onSubmit} className="flex flex-col gap-5" noValidate>
+              {mode === 'email' ? (
+                <>
+                  <Field label={t('login.email')} icon={Mail} htmlFor="email">
+                    <input
+                      id="email"
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="owner@example.com"
+                      className={INPUT}
+                    />
+                  </Field>
+                  <Field label={t('login.password')} icon={KeyRound} htmlFor="password">
+                    <input
+                      id="password"
+                      type="password"
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className={INPUT}
+                    />
+                  </Field>
+                </>
+              ) : (
+                <>
+                  <Field label={t('login.phone')} prefix="+91" htmlFor="phone">
+                    <input
+                      id="phone"
+                      type="tel"
+                      inputMode="numeric"
+                      autoComplete="tel-national"
+                      maxLength={11}
+                      value={phone}
+                      disabled={otpSent}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="98765 43210"
+                      className={INPUT}
+                    />
+                  </Field>
+                  {otpSent && (
+                    <Field
+                      label={t('login.otp')}
+                      icon={Lock}
+                      htmlFor="otp"
+                      action={
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => run(() => sendOtp(fullPhone), () => setCode(''))}
+                          className="text-sm font-semibold text-green-700 hover:underline"
+                        >
+                          {t('login.resend')}
+                        </button>
+                      }
+                    >
+                      <input
+                        id="otp"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        value={code}
+                        onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                        placeholder="••••••"
+                        aria-describedby="otp-hint"
+                        className={`${INPUT} tracking-[0.4em]`}
+                      />
+                    </Field>
+                  )}
+                  {otpSent && (
+                    <p id="otp-hint" className="-mt-3 text-xs text-navy-700">
+                      {t('login.otpHint')}
+                    </p>
+                  )}
+                </>
+              )}
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode(mode === 'email' ? 'phone' : 'email')
+                    setOtpSent(false)
+                    setError(null)
+                  }}
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-green-700 hover:underline"
+                >
+                  <Repeat size={16} aria-hidden /> {mode === 'email' ? t('login.usePhone') : t('login.useEmail')}
+                </button>
+              </div>
+
+              {error && (
+                <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-critical">
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={!canSubmit}
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-green-700 font-semibold text-white shadow-sm transition hover:bg-green-500 disabled:opacity-50"
+              >
+                {busy
+                  ? t('login.busy')
+                  : mode === 'email'
+                    ? t('login.submit')
+                    : otpSent
+                      ? t('login.verify')
+                      : t('login.sendOtp')}
+                <ArrowRight size={18} aria-hidden />
+              </button>
+            </form>
           )}
 
-          {error && (
-            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-critical">
-              {error}
-            </p>
-          )}
+          <p className="text-center text-sm text-navy-700">
+            {t('login.newOwner')} <span className="font-semibold text-navy-900">{t('login.noAccount')}</span>
+          </p>
+        </div>
 
-          <button
-            type="submit"
-            disabled={busy || (!demoMode && (!email || !password))}
-            className={`${primaryButton} w-full`}
-          >
-            <LogIn size={18} aria-hidden />
-            {demoMode ? t('login.viewDemo') : busy ? t('login.busy') : t('login.submit')}
-          </button>
-
-          {!demoMode && <p className="text-center text-xs text-navy-700">{t('login.noAccount')}</p>}
-        </form>
-
-        <p className="mt-6 text-center text-sm text-navy-700">
-          {t('login.newOwner')}{' '}
-          <Link to="/about?topic=demo#contact" className="font-semibold text-green-700 hover:text-green-500">
-            {t('nav.bookDemo')}
-          </Link>
+        <p className="mt-6 inline-flex items-center gap-1 text-xs text-navy-700">
+          <BadgeCheck size={16} className="text-green-700" aria-hidden /> Each owner sees only their own trucks.
         </p>
-        <Link to="/" className="mt-4 text-center text-sm font-semibold text-green-700 hover:text-green-500">
-          {t('login.back')}
+        <Link to="/" className="mt-4 text-sm font-semibold text-green-700 hover:text-green-500">
+          ← {t('nav.home')}
         </Link>
       </main>
+    </div>
+  )
+}
+
+const INPUT =
+  'w-full bg-transparent px-3 py-3 text-base text-navy-900 placeholder:text-navy-700/50 focus:outline-none disabled:opacity-60'
+
+/** Label + grey rounded input box with an icon or "+91" prefix (Stitch input style). */
+function Field({
+  label,
+  htmlFor,
+  icon: Icon,
+  prefix,
+  action,
+  children,
+}: {
+  label: string
+  htmlFor: string
+  icon?: LucideIcon
+  prefix?: string
+  action?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <label htmlFor={htmlFor} className="text-sm font-semibold">
+          {label}
+        </label>
+        {action}
+      </div>
+      <div className="flex items-center overflow-hidden rounded-lg bg-gray-100 ring-1 ring-transparent transition focus-within:bg-white focus-within:ring-2 focus-within:ring-green-300">
+        {prefix && <span className="self-stretch bg-gray-200 px-3.5 py-3 text-base text-navy-700">{prefix}</span>}
+        {Icon && <Icon size={20} className="ml-3.5 shrink-0 text-navy-700" aria-hidden />}
+        {children}
+      </div>
     </div>
   )
 }
