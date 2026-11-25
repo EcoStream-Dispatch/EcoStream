@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "compression": "EXT_meshopt_compression",
+  "totalBytes": 199516,
+  "models": [
+    {
+      "id": "wheel",
+      "title": "Wheel and tyre sensor",
+      "description": "Truck wheel assembly with the EcoStream cap-mount tyre-pressure sensor.",
+      "files": {
+        "high": {
+          "url": "models/wheel.glb",
+          "bytes": 117336
+        },
+        "low": {
+          "url": "models/wheel-low.glb",
+          "bytes": 82180
+        },
+        "meta": "models/wheel.meta.json"
+      }
+    }
+  ]
+}

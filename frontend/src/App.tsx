@@ -38,6 +38,8 @@ import {
 const TruckPage = lazy(() => import('./pages/TruckPage'))
 const DriverPage = lazy(() => import('./pages/DriverPage'))
 const ShipperPage = lazy(() => import('./pages/ShipperPage'))
+// Blender-built 3D models with the inspect / explode viewer (three.js only loads here)
+const ModelsPage = lazy(() => import('./models3d/ModelsPage'))
 // The 3D landing page (three.js) is only loaded on "/", so the app itself stays light.
 const Landing3D = lazy(() => import('./landing3d/Landing3D'))
 // The photo-real landing page (no three.js): the default.
@@ -75,6 +77,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<HomeRoute />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/models" element={<Lazy what="3D models"><ModelsPage /></Lazy>} />
       {/* Public pages from the team repo (Adithya, W1) */}
       <Route path="/about" element={<Lazy what="page"><AboutPage /></Lazy>} />
       <Route path="/garages/join" element={<Lazy what="page"><GaragesJoinPage /></Lazy>} />

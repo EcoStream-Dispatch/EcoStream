@@ -1,0 +1,174 @@
+{
+  "id": "wheel",
+  "title": "Wheel and tyre sensor",
+  "description": "Truck wheel assembly with the EcoStream cap-mount tyre-pressure sensor.",
+  "units": "metres",
+  "up": "Y",
+  "parts": [
+    {
+      "id": "hub",
+      "label": "Wheel hub",
+      "group": "wheel",
+      "order": 1,
+      "description": "Bolts the wheel to the axle and carries the wheel bearings.",
+      "explode": [
+        -1,
+        0,
+        0
+      ],
+      "distance": 0.32,
+      "hotspot": [
+        0.0205,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "id": "rim",
+      "label": "Steel disc rim",
+      "group": "wheel",
+      "order": 2,
+      "description": "22.5-inch steel rim. Holds the tyre bead; the hand holes cool the brakes.",
+      "explode": [
+        0,
+        0,
+        0
+      ],
+      "distance": 0.0,
+      "hotspot": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "id": "tyre",
+      "label": "Truck tyre 295/80 R22.5",
+      "group": "wheel",
+      "order": 3,
+      "description": "Tubeless radial truck tyre, about 1.04 m tall. EcoStream watches its pressure and temperature.",
+      "explode": [
+        -1,
+        0,
+        0
+      ],
+      "distance": 0.62,
+      "hotspot": [
+        0.0,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "id": "lug_nuts",
+      "label": "Wheel nuts (10)",
+      "group": "wheel",
+      "order": 4,
+      "description": "Ten nuts on a 335 mm circle clamp the rim to the hub.",
+      "explode": [
+        1,
+        0,
+        0
+      ],
+      "distance": 0.22,
+      "hotspot": [
+        0.0835,
+        0.0,
+        -0.0
+      ]
+    },
+    {
+      "id": "valve_stem",
+      "label": "Valve stem",
+      "group": "wheel",
+      "order": 5,
+      "description": "Where air goes in. The EcoStream sensor screws on in place of the valve cap.",
+      "explode": [
+        1,
+        0,
+        0
+      ],
+      "distance": 0.16,
+      "hotspot": [
+        0.045,
+        0.2142,
+        0.0892
+      ]
+    },
+    {
+      "id": "tpms_sensor",
+      "label": "EcoStream tyre sensor",
+      "group": "sensor",
+      "order": 6,
+      "sealed": true,
+      "description": "Sealed cap-mount sensor. Reads tyre pressure and temperature and radios them to the in-cab unit.",
+      "explode": [
+        0,
+        0,
+        0
+      ],
+      "distance": 0.0,
+      "hotspot": [
+        0.118,
+        0.2014,
+        0.0834
+      ]
+    },
+    {
+      "id": "tpms_sensor_band",
+      "label": "EcoStream tyre sensor",
+      "group": "sensor",
+      "order": 6,
+      "sealed": true,
+      "partOf": "tpms_sensor",
+      "description": "Sealed cap-mount sensor. Reads tyre pressure and temperature and radios them to the in-cab unit.",
+      "explode": [
+        0,
+        0,
+        0
+      ],
+      "distance": 0.0,
+      "hotspot": [
+        0.112,
+        0.2014,
+        0.0834
+      ]
+    }
+  ],
+  "root": "wheel_assembly",
+  "animations": [
+    {
+      "id": "spin",
+      "label": "Spin wheel",
+      "node": "wheel_assembly",
+      "type": "rotate",
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "speed": 1.2
+    }
+  ],
+  "camera": {
+    "position": [
+      1.6,
+      0.6,
+      1.6
+    ],
+    "target": [
+      0,
+      0,
+      0
+    ],
+    "minDistance": 0.6,
+    "maxDistance": 4.0
+  },
+  "ground": -0.53,
+  "shadowScale": 3
+}
