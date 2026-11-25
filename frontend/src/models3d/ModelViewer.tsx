@@ -1,9 +1,9 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
-import { ContactShadows, Html, OrbitControls, useGLTF } from '@react-three/drei'
+import { Html, OrbitControls, useGLTF } from '@react-three/drei'
+import Stage, { STAGE_BG } from './Stage'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 import { Boxes, Eye, Layers, Lock, Pause, Play, RotateCcw, ScanEye } from 'lucide-react'
 import { asset } from '../lib/asset'
 import { useLang } from '../lib/i18n'
@@ -56,21 +56,6 @@ interface SceneState {
   reduced: boolean
   ghost: boolean
   focusNonce: number
-}
-
-function Environment() {
-  const { gl, scene } = useThree()
-  useEffect(() => {
-    const pmrem = new THREE.PMREMGenerator(gl)
-    const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
-    scene.environment = env
-    return () => {
-      scene.environment = null
-      env.dispose()
-      pmrem.dispose()
-    }
-  }, [gl, scene])
-  return null
 }
 
 const ease = (x: number) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2)
@@ -379,23 +364,21 @@ export default function ModelViewer({
 
   return (
     <div className={`overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-green-500/15 ${className}`}>
-      <div className={`relative ${height} bg-gradient-to-b from-green-50 to-white`}>
+      <div className={`relative ${height}`} style={{ background: STAGE_BG }}>
         <Canvas
+          key={detail}
           shadows
           dpr={[1, 2]}
           camera={{ fov: 35, near: 0.05, far: 200, position: cam.position }}
           onPointerDown={() => setInteracted(true)}
-          gl={{ antialias: true }}
+          gl={{ antialias: detail !== 'high', toneMapping: detail === 'high' ? THREE.NoToneMapping : THREE.AgXToneMapping }}
           aria-label={`${meta.title}: 3D model. Drag to turn, scroll or pinch to zoom, tap a part to inspect it.`}
         >
-          <Environment />
-          <ambientLight intensity={0.3} />
-          <directionalLight position={[3, 5, 4]} intensity={1.6} castShadow shadow-mapSize={[1024, 1024]} />
+          <Stage meta={meta} fx={detail === 'high'} />
           <Fit meta={meta} />
           <Suspense fallback={<Loading />}>
             <Model url={asset(model.files[detail].url)} meta={meta} state={state} onSelect={setSelected} onFocus={showFocus} />
           </Suspense>
-          <ContactShadows position={[0, meta.ground ?? 0, 0]} opacity={0.35} scale={meta.shadowScale ?? 4} blur={2.5} far={4} />
           <OrbitControls
             ref={controlsRef}
             makeDefault

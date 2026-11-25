@@ -175,3 +175,101 @@ def export_glb(model_id):
     )
     print("EXPORTED", path, os.path.getsize(path))
     return path
+
+
+# ---------- surface detail helpers (realism pass) ----------
+_IMAGES = {}
+
+
+def _tileable_noise(n, scale, seed, aniso=None):
+    import numpy as np
+    rng = np.random.default_rng(seed)
+    f = np.fft.fftfreq(n)
+    fx, fy = np.meshgrid(f, f)
+    if aniso:  # long streaks (brushed metal): squash one frequency axis
+        fx = fx * aniso
+    k = np.sqrt(fx ** 2 + fy ** 2)
+    filt = np.exp(-(k / max(scale, 1e-4)) ** 2)
+    h = np.real(np.fft.ifft2(np.fft.fft2(rng.standard_normal((n, n))) * filt))
+    h = (h - h.mean()) / (h.std() + 1e-9)
+    return h
+
+
+def _normal_image(name, scale, aniso=None, n=256):
+    if name in _IMAGES:
+        return _IMAGES[name]
+    import numpy as np
+    h = _tileable_noise(n, scale, seed=abs(hash(name)) % 1000, aniso=aniso)
+    h2 = _tileable_noise(n, scale * 4, seed=7) * 0.35  # finer grain on top
+    h = h + h2
+    gx = (np.roll(h, -1, 1) - np.roll(h, 1, 1)) * 0.5
+    gy = (np.roll(h, -1, 0) - np.roll(h, 1, 0)) * 0.5
+    nx, ny, nz = -gx, -gy, np.ones_like(h) * 2.0
+    ln = np.sqrt(nx ** 2 + ny ** 2 + nz ** 2)
+    rgba = np.stack([nx / ln * 0.5 + 0.5, ny / ln * 0.5 + 0.5, nz / ln * 0.5 + 0.5, np.ones_like(h)], -1)
+    img = bpy.data.images.new(name, n, n, alpha=False)
+    img.colorspace_settings.name = "Non-Color"
+    img.pixels.foreach_set(rgba.astype("float32").ravel())
+    img.file_format = "JPEG"
+    img.pack()
+    _IMAGES[name] = img
+    return img
+
+
+def _hook_normal(mat, img, strength):
+    nt = mat.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = img
+    nm = nt.nodes.new("ShaderNodeNormalMap")
+    nm.inputs["Strength"].default_value = strength
+    nt.links.new(tex.outputs["Color"], nm.inputs["Color"])
+    nt.links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
+
+
+def add_noise_normal(mat, name, scale=0.05, strength=0.5, tiles=1):
+    """Fine grain (rubber, paint) as a tiling normal map. UVs come from uv_box()."""
+    if mat.get("has_normal"):
+        return
+    _hook_normal(mat, _normal_image(name, scale), strength)
+    mat["has_normal"] = 1
+
+
+def add_brushed_normal(mat, name, strength=0.3):
+    if mat.get("has_normal"):
+        return
+    _hook_normal(mat, _normal_image(name, 0.08, aniso=12.0), strength)
+    mat["has_normal"] = 1
+
+
+def uv_box(obj, size=0.1):
+    """Box-projected UVs (metres / size per tile) so tiling detail maps sit at real scale."""
+    me = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    uv = bm.loops.layers.uv.verify()
+    for f in bm.faces:
+        n = f.normal
+        ax = max(range(3), key=lambda i: abs(n[i]))
+        a, b = [i for i in range(3) if i != ax]
+        for l in f.loops:
+            co = l.vert.co
+            l[uv].uv = (co[a] / size, co[b] / size)
+    bm.to_mesh(me)
+    bm.free()
+
+
+uv_cylinder = uv_box
+
+
+def finish(obj, width=0.002, segments=2):
+    """Bevel hard edges + weighted normals: the CAD look that catches highlights on every edge."""
+    mod = obj.modifiers.new("Bevel", "BEVEL")
+    mod.width = width
+    mod.segments = segments
+    mod.limit_method = "ANGLE"
+    mod.angle_limit = math.radians(35)
+    mod.harden_normals = True
+    wn = obj.modifiers.new("WeightedNormal", "WEIGHTED_NORMAL")
+    wn.keep_sharp = True
+    return mod
