@@ -315,7 +315,7 @@ export default function NightWorld() {
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position={[-7.1, 0.0, 0]} receiveShadow>
         <planeGeometry args={[7.8, 160]} />
-        <meshStandardMaterial {...asphalt} color="#d8d8d8" roughness={1} metalness={0.05} normalScale={new THREE.Vector2(0.8, 0.8)} />
+        <meshStandardMaterial {...asphalt} color="#d8d8d8" roughness={0.78} metalness={0.08} normalScale={new THREE.Vector2(0.8, 0.8)} />
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position={[-7.1, 0.004, 0]}>
         <planeGeometry args={[7.6, 160]} />
@@ -323,7 +323,7 @@ export default function NightWorld() {
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position={[0.4, 0.002, -2]} receiveShadow>
         <planeGeometry args={[7.2, 60]} />
-        <meshStandardMaterial {...shoulder} color="#bdbab4" roughness={1} metalness={0.05} />
+        <meshStandardMaterial {...shoulder} color="#bdbab4" roughness={0.85} metalness={0.06} />
       </mesh>
       {/* kerbs: road edge and the barrier side, alternating paint */}
       {Array.from({ length: 40 }, (_, i) => (

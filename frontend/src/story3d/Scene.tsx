@@ -118,7 +118,7 @@ function Env() {
     const pm = new THREE.PMREMGenerator(gl)
     const env = pm.fromScene(new RoomEnvironment(), 0.04).texture
     scene.environment = env
-    scene.environmentIntensity = 0.12
+    scene.environmentIntensity = 0.22
     return () => {
       scene.environment = null
       env.dispose()
