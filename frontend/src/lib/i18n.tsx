@@ -28,6 +28,7 @@ const en = {
   'mv.close': 'Close',
   'mv.sealed': 'Sealed unit: inside not shown',
   'mv.hint': 'Drag to turn · pinch or scroll to zoom · tap a part',
+  'mv.ghost': 'X-ray view',
   'mv.reduced': 'Motion is reduced on this device',
   'mv.detail': 'Detail',
   'mv.high': 'High',

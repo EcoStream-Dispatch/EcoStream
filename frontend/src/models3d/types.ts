@@ -50,6 +50,11 @@ export interface ModelMeta {
   /** Height of the ground under the model (for the soft contact shadow), metres. */
   ground?: number
   shadowScale?: number
+  /** Parts that can turn see-through (X-ray), e.g. the tyre, so hidden parts show. */
+  ghost?: string[]
+  ghostLabel?: string
+  /** "Show sensor": fly the camera to this part, open its card, X-ray the ghost parts, pulse the LED. */
+  focus?: { part: string; label: string; led?: string; ghost?: boolean; direction?: Vec3; distance?: number }
 }
 
 export interface ManifestModel {

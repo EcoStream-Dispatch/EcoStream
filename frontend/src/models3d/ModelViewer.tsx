@@ -2,8 +2,9 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import { ContactShadows, Html, OrbitControls, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
-import { Boxes, Layers, Lock, Pause, Play, RotateCcw } from 'lucide-react'
+import { Boxes, Eye, Layers, Lock, Pause, Play, RotateCcw, ScanEye } from 'lucide-react'
 import { asset } from '../lib/asset'
 import { useLang } from '../lib/i18n'
 import type { ManifestModel, ModelAnimation, ModelMeta, ModelPart } from './types'
@@ -53,6 +54,8 @@ interface SceneState {
   selected: string | null
   playing: Record<string, boolean>
   reduced: boolean
+  ghost: boolean
+  focusNonce: number
 }
 
 function Environment() {
@@ -77,11 +80,13 @@ function Model({
   meta,
   state,
   onSelect,
+  onFocus,
 }: {
   url: string
   meta: ModelMeta
   state: SceneState
   onSelect: (id: string | null) => void
+  onFocus: () => void
 }) {
   const gltf = useGLTF(url, false, true)
   // Own copy (with own materials) so highlighting one viewer never touches another.
@@ -114,6 +119,31 @@ function Model({
   const angles = useRef<Record<string, number>>({})
   const tmpQ = useMemo(() => new THREE.Quaternion(), [])
   const tmpV = useMemo(() => new THREE.Vector3(), [])
+  // Our own sealed hardware gets a tag that follows it (it's small next to a 1 m wheel).
+  const tagged = useMemo(() => meta.parts.filter((p) => p.sealed && !p.partOf), [meta])
+  const tagRefs = useRef<Record<string, THREE.Group | null>>({})
+  const tmpBox = useMemo(() => new THREE.Box3(), [])
+  const ghostK = useRef(0)
+  // meshes that go see-through, and the LED that pulses
+  const { ghostMats, ledMats } = useMemo(() => {
+    const ghostIds = new Set(meta.ghost ?? [])
+    const g: THREE.MeshStandardMaterial[] = []
+    const l: THREE.MeshStandardMaterial[] = []
+    scene.traverse((o) => {
+      const m = o as THREE.Mesh
+      if (!m.isMesh) return
+      let owner: THREE.Object3D | null = m
+      let ghost = false
+      while (owner && !ghost) {
+        if (ghostIds.has(owner.name)) ghost = true
+        owner = owner.parent
+      }
+      const mats = (Array.isArray(m.material) ? m.material : [m.material]) as THREE.MeshStandardMaterial[]
+      if (ghost) g.push(...mats)
+      if (meta.focus?.led && (m.name === meta.focus.led || m.parent?.name === meta.focus.led)) l.push(...mats)
+    })
+    return { ghostMats: g, ledMats: l }
+  }, [scene, meta])
 
   useFrame((_, dt) => {
     const d = Math.min(dt, 0.05)
@@ -141,6 +171,36 @@ function Model({
       angles.current[a.id] = next
       n.obj.quaternion.copy(n.baseQ).multiply(tmpQ.setFromAxisAngle(tmpV.set(...a.axis).normalize(), next))
     }
+    // X-ray: fade the ghost parts
+    const gTarget = state.ghost ? 1 : 0
+    const gPrev = ghostK.current
+    ghostK.current = state.reduced ? gTarget : gPrev + (gTarget - gPrev) * Math.min(1, d * 4)
+    if (Math.abs(ghostK.current - gPrev) > 1e-4 || (ghostK.current > 0 && ghostMats[0]?.opacity === 1)) {
+      for (const m of ghostMats) {
+        m.transparent = ghostK.current > 0.01
+        m.opacity = 1 - 0.85 * ghostK.current
+        m.depthWrite = ghostK.current < 0.5
+        m.needsUpdate = true
+      }
+    }
+    // status LED: gentle pulse while the sensor is in focus
+    if (ledMats.length) {
+      const on = (state.ghost || (meta.focus && state.selected === meta.focus.part)) && !state.reduced
+      for (const m of ledMats) {
+        const base = m.userData.baseEmissive?.i ?? m.emissiveIntensity
+        if (!m.userData.baseEmissive) m.userData.baseEmissive = { c: m.emissive.clone(), i: base }
+        m.emissive.copy(m.userData.baseEmissive.c)
+        m.emissiveIntensity = on ? base * (0.55 + 0.45 * Math.sin(performance.now() / 260)) + base * 0.45 : base
+      }
+    }
+    // keep sensor tags on their part (it moves with spin / explode)
+    for (const p of tagged) {
+      const g = tagRefs.current[p.id]
+      const n = nodes.get(p.id)
+      if (!g || !n) continue
+      n.obj.updateWorldMatrix(true, true)
+      tmpBox.setFromObject(n.obj).getCenter(g.position)
+    }
   })
 
   // highlight the selected part
@@ -158,7 +218,8 @@ function Model({
       const mats = Array.isArray(m.material) ? m.material : [m.material]
       for (const mat of mats as THREE.MeshStandardMaterial[]) {
         if (!mat.userData.baseEmissive) mat.userData.baseEmissive = { c: mat.emissive.clone(), i: mat.emissiveIntensity }
-        const on = state.selected && id === state.selected
+        // our sealed units keep their real look when picked (the tag + LED show the selection)
+        const on = state.selected && id === state.selected && !parts.get(id)?.sealed
         mat.emissive.copy(on ? HIGHLIGHT : mat.userData.baseEmissive.c)
         mat.emissiveIntensity = on ? 0.55 : mat.userData.baseEmissive.i
       }
@@ -179,7 +240,28 @@ function Model({
   return (
     <group>
       <primitive object={scene} onClick={onClick} onPointerMissed={() => onSelect(null)} />
-      {sel && (
+      {tagged.map((p) => (
+        <group key={p.id} ref={(g) => (tagRefs.current[p.id] = g)} position={p.hotspot}>
+          {state.selected !== p.id && (
+            <Html center zIndexRange={[19, 0]}>
+              <button
+                type="button"
+                onClick={() => (meta.focus?.part === p.id ? onFocus() : onSelect(p.id))}
+                className="relative flex h-11 w-11 items-center justify-center"
+                aria-label={p.label}
+                title={p.label}
+              >
+                <span className="absolute h-8 w-8 animate-ping rounded-full ring-2 ring-green-400/70 motion-reduce:animate-none" aria-hidden />
+                <span className="absolute h-8 w-8 rounded-full ring-2 ring-green-500" aria-hidden />
+                <span className="absolute left-full top-1/2 -translate-y-1/2 whitespace-nowrap rounded-full bg-navy-900/85 px-2 py-0.5 text-[11px] font-semibold text-white shadow">
+                  {p.label}
+                </span>
+              </button>
+            </Html>
+          )}
+        </group>
+      ))}
+      {sel && !tagged.some((p) => p.id === sel.id) && (
         <Html position={sel.hotspot} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
           <span className="block h-4 w-4 rounded-full bg-green-500 ring-4 ring-green-300/50" aria-hidden />
         </Html>
@@ -197,6 +279,51 @@ function Fit({ meta }: { meta: ModelMeta }) {
     camera.position.set(c.position[0] * k, c.position[1] * k, c.position[2] * k)
     camera.lookAt(...c.target)
   }, [camera, meta, size.width, size.height])
+  return null
+}
+
+/** Fly the camera to the focus part (Show sensor). Stops as soon as the user drags. */
+function FocusFly({ meta, nonce, reduced, controlsRef }: { meta: ModelMeta; nonce: number; reduced: boolean; controlsRef: React.RefObject<OrbitControlsImpl | null> }) {
+  const { camera, scene } = useThree()
+  const goal = useRef<{ pos: THREE.Vector3; target: THREE.Vector3; t: number } | null>(null)
+  useEffect(() => {
+    const f = meta.focus
+    const controls = controlsRef.current
+    if (!nonce || !f || !controls) return
+    const node = scene.getObjectByName(f.part)
+    if (!node) return
+    node.updateWorldMatrix(true, true)
+    const target = new THREE.Box3().setFromObject(node).getCenter(new THREE.Vector3())
+    let dir: THREE.Vector3
+    if (f.direction) dir = new THREE.Vector3(...f.direction)
+    else {
+      // outboard (+X) and a little outward from the wheel centre, so the face with the LED shows
+      const radial = new THREE.Vector3(0, target.y, target.z).normalize()
+      dir = new THREE.Vector3(1, 0, 0).addScaledVector(radial, 0.55)
+    }
+    const pos = target.clone().addScaledVector(dir.normalize(), f.distance ?? 0.4)
+    goal.current = { pos, target, t: 0 }
+    if (reduced) {
+      camera.position.copy(pos)
+      controls.target.copy(target)
+      controls.update()
+      goal.current = null
+    }
+    const stop = () => (goal.current = null)
+    controls.addEventListener('start', stop)
+    return () => controls.removeEventListener('start', stop)
+  }, [nonce])
+  useFrame((_, dt) => {
+    const g = goal.current
+    const controls = controlsRef.current
+    if (!g || !controls) return
+    g.t += Math.min(dt, 0.05)
+    const k = Math.min(1, dt * 3.5)
+    camera.position.lerp(g.pos, k)
+    controls.target.lerp(g.target, k)
+    controls.update()
+    if (g.t > 1.6) goal.current = null
+  })
   return null
 }
 
@@ -228,11 +355,24 @@ export default function ModelViewer({
   const [selected, setSelected] = useState<string | null>(null)
   const [playing, setPlaying] = useState<Record<string, boolean>>({})
   const [interacted, setInteracted] = useState(false)
+  const [ghost, setGhost] = useState(false)
+  const [focusNonce, setFocusNonce] = useState(0)
+  const controlsRef = useRef<OrbitControlsImpl | null>(null)
+  const focus = meta.focus
+  const showFocus = () => {
+    if (!focus) return
+    setInteracted(true)
+    if (focus.ghost) setGhost(true)
+    setSelected(focus.part)
+    // hold still so the camera can find it
+    setPlaying((p) => Object.fromEntries(Object.keys(p).map((k) => [k, false])))
+    setFocusNonce((n) => n + 1)
+  }
 
   const visibleParts = meta.parts.filter((p) => !p.partOf).sort((a, b) => a.order - b.order)
   const sel = selected ? meta.parts.find((p) => p.id === selected) : null
   const cam = meta.camera ?? { position: [2, 1, 2], target: [0, 0, 0], minDistance: 0.5, maxDistance: 6 }
-  const state: SceneState = { explode, selected, playing, reduced }
+  const state: SceneState = { explode, selected, playing, reduced, ghost, focusNonce }
   const anims: ModelAnimation[] = meta.animations ?? []
 
   return (
@@ -251,18 +391,20 @@ export default function ModelViewer({
           <directionalLight position={[3, 5, 4]} intensity={1.6} castShadow shadow-mapSize={[1024, 1024]} />
           <Fit meta={meta} />
           <Suspense fallback={<Loading />}>
-            <Model url={asset(model.files[detail].url)} meta={meta} state={state} onSelect={setSelected} />
+            <Model url={asset(model.files[detail].url)} meta={meta} state={state} onSelect={setSelected} onFocus={showFocus} />
           </Suspense>
           <ContactShadows position={[0, meta.ground ?? 0, 0]} opacity={0.35} scale={meta.shadowScale ?? 4} blur={2.5} far={4} />
           <OrbitControls
+            ref={controlsRef}
             makeDefault
             target={cam.target}
             enableDamping
-            minDistance={cam.minDistance}
+            minDistance={focusNonce ? Math.min(cam.minDistance, 0.2) : cam.minDistance}
             maxDistance={cam.maxDistance}
             autoRotate={!reduced && !interacted && !selected}
             autoRotateSpeed={0.8}
           />
+          <FocusFly meta={meta} nonce={focusNonce} reduced={reduced} controlsRef={controlsRef} />
         </Canvas>
 
         {/* info card */}
@@ -316,8 +458,29 @@ export default function ModelViewer({
           </div>
         </div>
 
-        {anims.length > 0 && (
+        {(anims.length > 0 || focus || meta.ghost?.length) && (
           <div className="flex flex-wrap gap-2">
+            {focus && (
+              <button
+                type="button"
+                onClick={showFocus}
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-lg bg-green-700 px-3 text-sm font-semibold text-white hover:bg-green-500"
+              >
+                <ScanEye size={16} aria-hidden /> {focus.label}
+              </button>
+            )}
+            {!!meta.ghost?.length && (
+              <button
+                type="button"
+                aria-pressed={ghost}
+                onClick={() => setGhost((g) => !g)}
+                className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 text-sm font-semibold ring-1 transition ${
+                  ghost ? 'bg-navy-900 text-white ring-navy-900' : 'bg-white text-navy-900 ring-gray-300 hover:ring-green-500'
+                }`}
+              >
+                <Eye size={16} aria-hidden /> {meta.ghostLabel ?? t('mv.ghost')}
+              </button>
+            )}
             {anims.map((a) => (
               <button
                 key={a.id}

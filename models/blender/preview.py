@@ -27,6 +27,9 @@ for p in meta["parts"]:
         d = Vector(p["explode"]) * p["distance"] * explode  # glTF (x, y, z) -> Blender (x, -z, y)
         o.location += Vector((d.x, -d.z, d.y)) if o.parent is None or o.parent.type == "EMPTY" else Vector((d.x, -d.z, d.y))
 
+for name in filter(None, os.environ.get("HIDE", "").split(",")):  # e.g. HIDE=tyre
+    if name in bpy.data.objects:
+        bpy.data.objects[name].hide_render = True
 objs = [o for o in bpy.data.objects if o.type == "MESH"]
 bpy.context.view_layer.update()
 pts = [o.matrix_world @ Vector(c) for o in objs for c in o.bound_box]
@@ -34,6 +37,8 @@ lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)
 hi = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
 center, size = (lo + hi) / 2, (hi - lo).length
 d = dist or size * 1.35
+if len(argv) > 8:  # optional focus point (Blender coords)
+    center = Vector((float(argv[6]), float(argv[7]), float(argv[8])))
 cam_loc = center + Vector((math.cos(el) * math.sin(az), -math.cos(el) * math.cos(az), math.sin(el))) * d
 cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
 bpy.context.scene.collection.objects.link(cam)

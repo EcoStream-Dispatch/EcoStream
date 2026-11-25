@@ -1,7 +1,7 @@
 {
   "id": "wheel",
   "title": "Wheel and tyre sensor",
-  "description": "Truck wheel assembly with the EcoStream cap-mount tyre-pressure sensor.",
+  "description": "Truck wheel assembly with the EcoStream tyre-pressure sensor, sealed and mounted on the valve inside the tyre.",
   "units": "metres",
   "up": "Y",
   "parts": [
@@ -82,17 +82,17 @@
       "label": "Valve stem",
       "group": "wheel",
       "order": 5,
-      "description": "Where air goes in. The EcoStream sensor screws on in place of the valve cap.",
+      "description": "Where air goes in. Inside the tyre it carries the EcoStream sensor, so it stays put when the wheel comes apart.",
       "explode": [
-        1,
+        0,
         0,
         0
       ],
-      "distance": 0.16,
+      "distance": 0.0,
       "hotspot": [
-        0.045,
-        0.2142,
-        0.0892
+        0.055,
+        0.2283,
+        0.0943
       ]
     },
     {
@@ -101,7 +101,7 @@
       "group": "sensor",
       "order": 6,
       "sealed": true,
-      "description": "Sealed cap-mount sensor. Reads tyre pressure and temperature and radios them to the in-cab unit.",
+      "description": "Sealed valve-mounted sensor inside the tyre, about 70 x 40 x 25 mm. Reads tyre pressure and temperature and radios them to the in-cab unit.",
       "explode": [
         0,
         0,
@@ -109,9 +109,9 @@
       ],
       "distance": 0.0,
       "hotspot": [
-        0.118,
-        0.2014,
-        0.0834
+        0.0,
+        0.2435,
+        0.1282
       ]
     },
     {
@@ -121,7 +121,7 @@
       "order": 6,
       "sealed": true,
       "partOf": "tpms_sensor",
-      "description": "Sealed cap-mount sensor. Reads tyre pressure and temperature and radios them to the in-cab unit.",
+      "description": "",
       "explode": [
         0,
         0,
@@ -129,9 +129,29 @@
       ],
       "distance": 0.0,
       "hotspot": [
-        0.112,
-        0.2014,
-        0.0834
+        0.0,
+        0.2486,
+        0.1202
+      ]
+    },
+    {
+      "id": "tpms_sensor_led",
+      "label": "EcoStream tyre sensor",
+      "group": "sensor",
+      "order": 6,
+      "sealed": true,
+      "partOf": "tpms_sensor",
+      "description": "",
+      "explode": [
+        0,
+        0,
+        0
+      ],
+      "distance": 0.0,
+      "hotspot": [
+        0.0205,
+        0.2539,
+        0.1071
       ]
     }
   ],
@@ -168,6 +188,17 @@
     ],
     "minDistance": 0.6,
     "maxDistance": 4.0
+  },
+  "ghost": [
+    "tyre"
+  ],
+  "ghostLabel": "See-through tyre",
+  "focus": {
+    "part": "tpms_sensor",
+    "label": "Show sensor",
+    "led": "tpms_sensor_led",
+    "ghost": true,
+    "distance": 0.55
   },
   "ground": -0.53,
   "shadowScale": 3
