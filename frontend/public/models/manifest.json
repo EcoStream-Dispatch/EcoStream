@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "compression": "EXT_meshopt_compression",
+  "totalBytes": 7576028,
+  "models": [
+    {
+      "id": "truck",
+      "title": "10-wheel tipper truck",
+      "description": "Generic Indian tipper truck with the EcoStream tyre sensors and in-cab unit.",
+      "files": {
+        "high": {
+          "url": "models/truck.glb",
+          "bytes": 2752436
+        },
+        "low": {
+          "url": "models/truck-low.glb",
+          "bytes": 1818232
+        },
+        "meta": "models/truck.meta.json"
+      }
+    },
+    {
+      "id": "wheel",
+      "title": "Wheel and tyre sensor",
+      "description": "Truck wheel assembly with the EcoStream tyre-pressure sensor, sealed and mounted on the valve inside the tyre.",
+      "files": {
+        "high": {
+          "url": "models/wheel.glb",
+          "bytes": 1808192
+        },
+        "low": {
+          "url": "models/wheel-low.glb",
+          "bytes": 1197168
+        },
+        "meta": "models/wheel.meta.json"
+      }
+    }
+  ]
+}

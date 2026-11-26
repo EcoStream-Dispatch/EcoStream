@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import Lenis from 'lenis'
 import 'lenis/dist/lenis.css'
@@ -14,6 +14,8 @@ import LanguageSwitch from '../components/LanguageSwitch'
 import Wordmark from '../components/Wordmark'
 import { asset } from '../lib/asset'
 import { useLang } from '../lib/i18n'
+
+const ModelShowcase = lazy(() => import('../models3d/ModelShowcase'))
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -245,6 +247,9 @@ export default function Landing3D() {
 
         {/* ---------- After the story: regular sections on a solid background ---------- */}
         <div ref={storyEnd} className="relative bg-green-50">
+          <Suspense fallback={null}>
+            <ModelShowcase />
+          </Suspense>
           <LandingPage embedded />
         </div>
       </main>
